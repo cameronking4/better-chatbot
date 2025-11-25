@@ -1,0 +1,36 @@
+services:
+  better-chatbot:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    ports:
+      - '3000:3000'
+    environment:
+      - NO_HTTPS=1
+    env_file:
+      - .env
+    dns:
+      - 8.8.8.8 # Google's public DNS server
+      - 8.8.4.4 # Google's public DNS server
+    networks:
+      - better-chatbot-networks
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17
+    env_file:
+      - .env
+    networks:
+      - better-chatbot-networks
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  better-chatbot-networks:
+    driver: bridge
