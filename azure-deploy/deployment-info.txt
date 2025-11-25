@@ -1,0 +1,101 @@
+Better Chatbot - Azure AKS Deployment Information
+==================================================
+Generated: Mon Nov 24 22:43:00 PST 2024
+Last Updated: Mon Nov 24 22:43:00 PST 2024
+
+Azure Resources
+---------------
+Resource Group:      better-chatbot-rg
+Location:            eastus
+ACR Name:            betterchatbotacr1764026475
+ACR Login Server:    betterchatbotacr1764026475.azurecr.io
+AKS Cluster:         better-chatbot-aks
+Node Count:          2
+Node Size:           Standard_D2s_v3
+Storage Account:     betterchatbotsa
+File Share:          app-data
+
+Kubernetes
+----------
+Namespace:           better-chatbot
+Deployment:          better-chatbot (2 replicas)
+Service Name:        better-chatbot-service
+Service Type:        LoadBalancer
+Persistent Volume:   azure-file-share (mounted at /app/data)
+
+Current Status
+--------------
+Pods Running:        2/2
+Image:               betterchatbotacr1764026475.azurecr.io/better-chatbot:latest
+External IP:         Check with: kubectl get service better-chatbot-service -n better-chatbot
+
+Useful Commands
+---------------
+# View deployment status
+./status.sh
+
+# View application logs
+./logs.sh --follow
+
+# Update application
+./update-deploy.sh
+
+# Scale replicas
+./scale.sh 3
+
+# Check pods
+kubectl get pods -n better-chatbot
+
+# Get service details
+kubectl get service better-chatbot-service -n better-chatbot
+
+# Access pod shell
+kubectl exec -it deployment/better-chatbot -n better-chatbot -- /bin/sh
+
+# View persistent data
+kubectl exec -it deployment/better-chatbot -n better-chatbot -- ls -la /app/data
+
+# View rollout history
+kubectl rollout history deployment/better-chatbot -n better-chatbot
+
+# Rollback deployment
+kubectl rollout undo deployment/better-chatbot -n better-chatbot
+
+Azure CLI Commands
+------------------
+# View ACR images
+az acr repository show-tags --name betterchatbotacr1764026475 --repository better-chatbot --orderby time_desc --output table
+
+# Check AKS status
+az aks show --name better-chatbot-aks --resource-group better-chatbot-rg --output table
+
+# Get AKS credentials
+az aks get-credentials --name better-chatbot-aks --resource-group better-chatbot-rg --overwrite-existing
+
+# Stop AKS (to save costs)
+az aks stop --name better-chatbot-aks --resource-group better-chatbot-rg
+
+# Start AKS
+az aks start --name better-chatbot-aks --resource-group better-chatbot-rg
+
+Cost Management
+---------------
+Estimated Monthly Cost: ~$165
+- AKS nodes: ~$140 (2 x Standard_D2s_v3)
+- ACR: ~$5 (Basic tier)
+- Storage: ~$0.10
+- Load Balancer: ~$18
+- Monitoring: ~$2
+
+To reduce costs:
+1. Scale down: ./scale.sh 1
+2. Stop cluster: az aks stop --name better-chatbot-aks --resource-group better-chatbot-rg
+3. Use smaller nodes (requires cluster recreation)
+
+Cleanup
+-------
+To delete all resources:
+./cleanup.sh
+
+WARNING: This permanently deletes all Azure resources and data!
+

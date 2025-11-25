@@ -8,6 +8,10 @@ import { Tool } from "ai";
 import { httpFetchTool } from "./http/fetch";
 import { jsExecutionTool } from "./code/js-run-tool";
 import { pythonExecutionTool } from "./code/python-run-tool";
+import { createAgentTool } from "./agent/create-agent";
+import { updateAgentTool } from "./agent/update-agent";
+import { deleteAgentTool } from "./agent/delete-agent";
+import { listAgentsTool } from "./agent/list-agents";
 
 export const APP_DEFAULT_TOOL_KIT: Record<
   AppDefaultToolkit,
@@ -29,5 +33,11 @@ export const APP_DEFAULT_TOOL_KIT: Record<
   [AppDefaultToolkit.Code]: {
     [DefaultToolName.JavascriptExecution]: jsExecutionTool,
     [DefaultToolName.PythonExecution]: pythonExecutionTool,
+  },
+  [AppDefaultToolkit.Agent]: {
+    [DefaultToolName.CreateAgent]: createAgentTool,
+    [DefaultToolName.UpdateAgent]: updateAgentTool,
+    [DefaultToolName.DeleteAgent]: deleteAgentTool,
+    [DefaultToolName.ListAgents]: listAgentsTool,
   },
 };

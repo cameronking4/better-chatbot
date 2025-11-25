@@ -18,7 +18,7 @@ import { BACKGROUND_COLORS } from "lib/const";
 import { cn, fetcher, objectFlow } from "lib/utils";
 import { safe } from "ts-safe";
 import { handleErrorWithToast } from "ui/shared-toast";
-import { ChevronDownIcon, Loader, WandSparklesIcon } from "lucide-react";
+import { ChevronDownIcon, Code2, Loader, WandSparklesIcon } from "lucide-react";
 import { Button } from "ui/button";
 import {
   DropdownMenu,
@@ -85,6 +85,7 @@ export default function EditAgent({
   const router = useRouter();
 
   const [openGenerateAgentDialog, setOpenGenerateAgentDialog] = useState(false);
+  const [openCodeExportDialog, setOpenCodeExportDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVisibilityChangeLoading, setIsVisibilityChangeLoading] =
     useState(false);
@@ -376,6 +377,15 @@ export default function EditAgent({
 
             {initialAgent && (
               <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setOpenCodeExportDialog(true)}
+                  disabled={isLoading}
+                  title="Export API Code"
+                >
+                  <Code2 className="size-4" />
+                </Button>
                 <ShareableActions
                   type="agent"
                   visibility={agent.visibility || "private"}
@@ -563,6 +573,96 @@ export default function EditAgent({
         onAgentChange={handleAgentChange}
         onToolsGenerated={assignToolsByNames}
       />
+
+      {/* Code Export Dialog */}
+      {openCodeExportDialog && initialAgent && (
+        <div
+          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm"
+          onClick={() => setOpenCodeExportDialog(false)}
+        >
+          <div
+            className="fixed left-[50%] top-[50%] z-50 w-full max-w-2xl translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">API Code Export</h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setOpenCodeExportDialog(false)}
+                >
+                  ×
+                </Button>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Use this cURL command to call your agent via the API. Make sure to set CHAT_API_KEY in your .env file.
+              </p>
+              <div className="relative">
+                <pre className="p-4 bg-secondary rounded-md overflow-x-auto text-xs">
+                  <code>{(() => {
+                    const chatId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '550e8400-e29b-41d4-a716-446655440000';
+                    const messageId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '550e8400-e29b-41d4-a716-446655440001';
+                    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+                    return `curl -X POST ${baseUrl}/api/chat \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -d '{
+    "id": "${chatId}",
+    "message": {
+      "id": "${messageId}",
+      "role": "user",
+      "parts": [{"type": "text", "text": "Your message here"}]
+    },
+    "chatModel": {"provider": "openai", "model": "gpt-4"},
+    "toolChoice": "auto",
+    "mentions": [{
+      "type": "agent",
+      "agentId": "${initialAgent.id}",
+      "name": "${agent.name}"
+    }],
+    "attachments": []
+  }'`;
+                  })()}</code>
+                </pre>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="absolute top-2 right-2"
+                  onClick={() => {
+                    const chatId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '550e8400-e29b-41d4-a716-446655440000';
+                    const messageId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '550e8400-e29b-41d4-a716-446655440001';
+                    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+                    const code = `curl -X POST ${baseUrl}/api/chat \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -d '{
+    "id": "${chatId}",
+    "message": {
+      "id": "${messageId}",
+      "role": "user",
+      "parts": [{"type": "text", "text": "Your message here"}]
+    },
+    "chatModel": {"provider": "openai", "model": "gpt-4"},
+    "toolChoice": "auto",
+    "mentions": [{
+      "type": "agent",
+      "agentId": "${initialAgent.id}",
+      "name": "${agent.name}"
+    }],
+    "attachments": []
+  }'`;
+                    navigator.clipboard.writeText(code);
+                    toast.success("Copied to clipboard!");
+                  }}
+                >
+                  Copy
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </ScrollArea>
   );
 }
