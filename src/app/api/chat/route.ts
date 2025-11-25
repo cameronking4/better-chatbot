@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 
     // Check for API key authentication first
     const authHeader = request.headers.get("Authorization");
-    const apiKey = process.env.CHAT_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY ?? process.env.CHAT_API_KEY;
     let userId: string | undefined;
     let session: Awaited<ReturnType<typeof getSession>> | null = null;
 

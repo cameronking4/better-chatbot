@@ -376,7 +376,7 @@ export default function EditAgent({
             )}
 
             {initialAgent && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
                   size="icon"
@@ -635,7 +635,7 @@ export default function EditAgent({
                     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
                     const code = `curl -X POST ${baseUrl}/api/chat \\
   -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Authorization: Bearer ${process.env.NEXT_PUBLIC_API_KEY}" \\
   -d '{
     "id": "${chatId}",
     "message": {

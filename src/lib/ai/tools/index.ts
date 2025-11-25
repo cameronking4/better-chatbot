@@ -4,6 +4,7 @@ export enum AppDefaultToolkit {
   Http = "http",
   Code = "code",
   Agent = "agent",
+  Workflow = "workflow",
 }
 
 export enum DefaultToolName {
@@ -20,6 +21,19 @@ export enum DefaultToolName {
   UpdateAgent = "updateAgent",
   DeleteAgent = "deleteAgent",
   ListAgents = "listAgents",
+  CreateWorkflow = "createWorkflow",
+  UpdateWorkflow = "updateWorkflow",
+  DeleteWorkflow = "deleteWorkflow",
+  ListWorkflows = "listWorkflows",
+  AddNode = "addNode",
+  UpdateNode = "updateNode",
+  DeleteNode = "deleteNode",
+  ListNodes = "listNodes",
+  AddEdge = "addEdge",
+  DeleteEdge = "deleteEdge",
+  ListEdges = "listEdges",
+  GetWorkflowStructure = "getWorkflowStructure",
+  ListAvailableTools = "listAvailableTools",
 }
 
 export const SequentialThinkingToolName = "sequential-thinking";

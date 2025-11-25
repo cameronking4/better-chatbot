@@ -135,9 +135,9 @@ export function ShareableActions({
                   <div>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="icon"
-                        className="size-8 data-[state=open]:bg-input text-muted-foreground hover:text-foreground"
+                        className="data-[state=open]:bg-input"
                         data-testid="visibility-button"
                         disabled={isAnyLoading || disabled}
                         onClick={(e) => {
@@ -148,7 +148,7 @@ export function ShareableActions({
                         {isVisibilityChangeLoading ? (
                           <Loader2 className="size-4 animate-spin" />
                         ) : (
-                          <VisibilityIcon className="size-4" />
+                          <VisibilityIcon />
                         )}
                       </Button>
                     </DropdownMenuTrigger>
