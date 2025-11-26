@@ -455,3 +455,138 @@ export const ScheduledTaskExecutionTable = pgTable(
 export type ScheduledTaskEntity = typeof ScheduledTaskTable.$inferSelect;
 export type ScheduledTaskExecutionEntity =
   typeof ScheduledTaskExecutionTable.$inferSelect;
+
+// Autonomous session tables for autonomous agent behavior
+export const AutonomousSessionTable = pgTable(
+  "autonomous_session",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    agentId: uuid("agent_id").references(() => AgentTable.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    goal: text("goal").notNull(),
+    status: varchar("status", {
+      enum: ["planning", "executing", "paused", "completed", "failed"],
+    })
+      .notNull()
+      .default("planning"),
+    maxIterations: json("max_iterations").notNull().default(20),
+    currentIteration: json("current_iteration").notNull().default(0),
+    chatModel: json("chat_model").$type<{
+      provider: string;
+      model: string;
+    }>(),
+    toolChoice: text("tool_choice"),
+    mentions: json("mentions").array().$type<ChatMention[]>(),
+    allowedMcpServers: json("allowed_mcp_servers").$type<
+      Record<string, AllowedMCPServer>
+    >(),
+    allowedAppDefaultToolkit: json("allowed_app_default_toolkit")
+      .array()
+      .$type<AppDefaultToolkit[]>(),
+    progressPercentage: json("progress_percentage").notNull().default(0),
+    error: text("error"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    lastActivityAt: timestamp("last_activity_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("autonomous_session_user_id_idx").on(t.userId),
+    index("autonomous_session_status_idx").on(t.status),
+    index("autonomous_session_agent_id_idx").on(t.agentId),
+  ],
+);
+
+export const AutonomousIterationTable = pgTable(
+  "autonomous_iteration",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => AutonomousSessionTable.id, { onDelete: "cascade" }),
+    iterationNumber: json("iteration_number").notNull(),
+    threadId: uuid("thread_id").references(() => ChatThreadTable.id, {
+      onDelete: "set null",
+    }),
+    phase: varchar("phase", {
+      enum: ["evaluating", "planning", "executing", "observing"],
+    }).notNull(),
+    evaluation: json("evaluation").$type<{
+      goalAchieved: boolean;
+      progressPercentage: number;
+      blockers?: string[];
+      recommendations?: string[];
+      shouldContinue: boolean;
+    }>(),
+    plan: json("plan").$type<{
+      action: string;
+      rationale: string;
+      expectedOutcome: string;
+    }>(),
+    result: json("result").$type<{
+      success: boolean;
+      output?: any;
+      error?: string;
+    }>(),
+    startedAt: timestamp("started_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    completedAt: timestamp("completed_at"),
+    duration: text("duration"), // Duration in milliseconds
+  },
+  (t) => [
+    index("autonomous_iteration_session_id_idx").on(t.sessionId),
+    index("autonomous_iteration_phase_idx").on(t.phase),
+  ],
+);
+
+export const AutonomousObservationTable = pgTable(
+  "autonomous_observation",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => AutonomousSessionTable.id, { onDelete: "cascade" }),
+    iterationId: uuid("iteration_id").references(
+      () => AutonomousIterationTable.id,
+      { onDelete: "cascade" },
+    ),
+    type: varchar("type", {
+      enum: [
+        "evaluation",
+        "planning",
+        "execution",
+        "tool_call",
+        "error",
+        "user_intervention",
+      ],
+    }).notNull(),
+    content: text("content").notNull(),
+    metadata: json("metadata").$type<Record<string, any>>(),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("autonomous_observation_session_id_idx").on(t.sessionId),
+    index("autonomous_observation_iteration_id_idx").on(t.iterationId),
+    index("autonomous_observation_type_idx").on(t.type),
+  ],
+);
+
+export type AutonomousSessionEntity =
+  typeof AutonomousSessionTable.$inferSelect;
+export type AutonomousIterationEntity =
+  typeof AutonomousIterationTable.$inferSelect;
+export type AutonomousObservationEntity =
+  typeof AutonomousObservationTable.$inferSelect;
