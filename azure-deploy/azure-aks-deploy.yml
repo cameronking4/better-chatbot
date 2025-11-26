@@ -1,0 +1,318 @@
+name: Deploy to Azure AKS
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/workflows/claude*.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  IMAGE_NAME: better-chatbot
+  DEPLOYMENT_NAME: better-chatbot
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Run type check
+        run: npm run check-types
+
+      - name: Run tests
+        run: npm run test
+        continue-on-error: true
+
+      - name: Build application
+        run: npm run build
+        env:
+          NO_HTTPS: '1'
+
+  build-and-push-image:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+
+          TAGS="${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest"
+          TAGS="${TAGS},${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${SHORT_SHA}"
+          TAGS="${TAGS},${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${TIMESTAMP}"
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+          echo "short-sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Image build summary
+        run: |
+          echo "### Docker Image Build Success ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Digest:** \`${{ steps.build.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ steps.meta.outputs.short-sha }}\`" >> $GITHUB_STEP_SUMMARY
+
+  deploy-to-aks:
+    name: Deploy to AKS
+    runs-on: ubuntu-latest
+    needs: build-and-push-image
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: ${{ steps.get-url.outputs.app-url }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_NAME }}
+
+      - name: Update Kubernetes secrets
+        run: |
+          # Decode and update environment secrets if provided
+          if [ -n "${{ secrets.APP_ENV_SECRETS }}" ]; then
+            echo "Updating application secrets..."
+            echo "${{ secrets.APP_ENV_SECRETS }}" | base64 -d > /tmp/.env
+
+            kubectl create secret generic better-chatbot-env \
+              --from-env-file=/tmp/.env \
+              --namespace=${{ secrets.AKS_NAMESPACE }} \
+              --dry-run=client -o yaml | kubectl apply -f -
+
+            rm /tmp/.env
+            echo "✅ Secrets updated successfully"
+          else
+            echo "⚠️ No APP_ENV_SECRETS provided, skipping secret update"
+          fi
+
+      - name: Update deployment image
+        run: |
+          # Update the deployment with the new image
+          kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
+            ${{ env.DEPLOYMENT_NAME }}=${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest \
+            -n ${{ secrets.AKS_NAMESPACE }}
+
+          echo "✅ Deployment image updated"
+
+      - name: Restart deployment
+        run: |
+          # Force a rollout restart to ensure new image is pulled
+          kubectl rollout restart deployment/${{ env.DEPLOYMENT_NAME }} \
+            -n ${{ secrets.AKS_NAMESPACE }}
+
+          echo "✅ Deployment restart initiated"
+
+      - name: Wait for rollout
+        run: |
+          echo "⏳ Waiting for rollout to complete..."
+
+          if kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} \
+            -n ${{ secrets.AKS_NAMESPACE }} \
+            --timeout=10m; then
+            echo "✅ Rollout completed successfully"
+          else
+            echo "❌ Rollout failed or timed out"
+            exit 1
+          fi
+
+      - name: Verify deployment
+        id: verify
+        run: |
+          echo "### Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Get deployment status
+          echo "**Deployment:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          kubectl get deployment ${{ env.DEPLOYMENT_NAME }} -n ${{ secrets.AKS_NAMESPACE }} >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Get pod status
+          echo "**Pods:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n ${{ secrets.AKS_NAMESPACE }} -l app=${{ env.DEPLOYMENT_NAME }} >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Check pod health
+          READY_PODS=$(kubectl get pods -n ${{ secrets.AKS_NAMESPACE }} -l app=${{ env.DEPLOYMENT_NAME }} -o json | jq -r '.items | map(select(.status.conditions[] | select(.type=="Ready" and .status=="True"))) | length')
+          TOTAL_PODS=$(kubectl get pods -n ${{ secrets.AKS_NAMESPACE }} -l app=${{ env.DEPLOYMENT_NAME }} -o json | jq -r '.items | length')
+
+          echo "**Health Check:** $READY_PODS/$TOTAL_PODS pods ready" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$READY_PODS" -eq 0 ]; then
+            echo "❌ No pods are ready!" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ Deployment is healthy" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Get application URL
+        id: get-url
+        run: |
+          # Get external IP
+          EXTERNAL_IP=$(kubectl get service better-chatbot-service \
+            -n ${{ secrets.AKS_NAMESPACE }} \
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
+
+          if [ "$EXTERNAL_IP" != "pending" ]; then
+            APP_URL="http://${EXTERNAL_IP}"
+            echo "app-url=${APP_URL}" >> $GITHUB_OUTPUT
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Application URL:** ${APP_URL}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Application URL:** ⏳ External IP pending..." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Get recent logs
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Recent Application Logs" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          kubectl logs deployment/${{ env.DEPLOYMENT_NAME }} \
+            -n ${{ secrets.AKS_NAMESPACE }} \
+            --tail=30 \
+            --prefix=true 2>&1 | head -n 50 >> $GITHUB_STEP_SUMMARY || echo "Logs not available" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Deployment summary
+        if: success()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** \`${{ secrets.ACR_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: deploy-to-aks
+    if: failure()
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ secrets.AKS_RESOURCE_GROUP }}
+          cluster-name: ${{ secrets.AKS_NAME }}
+
+      - name: Rollback deployment
+        run: |
+          echo "🔄 Initiating rollback..."
+
+          if kubectl rollout undo deployment/${{ env.DEPLOYMENT_NAME }} \
+            -n ${{ secrets.AKS_NAMESPACE }}; then
+            echo "✅ Rollback initiated"
+
+            # Wait for rollback to complete
+            kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} \
+              -n ${{ secrets.AKS_NAMESPACE }} \
+              --timeout=5m
+
+            echo "✅ Rollback completed successfully"
+          else
+            echo "❌ Rollback failed"
+            exit 1
+          fi
+
+      - name: Notify rollback
+        if: always()
+        run: |
+          echo "### ⚠️ Deployment Failed - Rollback Executed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The deployment encountered errors and has been automatically rolled back." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Action Required:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review the deployment logs above" >> $GITHUB_STEP_SUMMARY
+          echo "2. Fix the issues in your code" >> $GITHUB_STEP_SUMMARY
+          echo "3. Commit and push to trigger a new deployment" >> $GITHUB_STEP_SUMMARY
