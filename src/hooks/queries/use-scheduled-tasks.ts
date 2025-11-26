@@ -69,9 +69,25 @@ export function useScheduledTasks() {
   };
 
   const updateTask = async (data: { id: string } & any) => {
-    const result = await updateScheduledTask(data);
-    mutate("/api/scheduled-task");
-    return result;
+    // Optimistically update the cache
+    const optimisticUpdate = (tasks: ScheduledTask[] | undefined) => {
+      if (!tasks) return tasks;
+      return tasks.map((task) =>
+        task.id === data.id ? { ...task, ...data } : task,
+      );
+    };
+    mutate("/api/scheduled-task", optimisticUpdate, false);
+
+    try {
+      const result = await updateScheduledTask(data);
+      // Revalidate with server data
+      mutate("/api/scheduled-task");
+      return result;
+    } catch (error) {
+      // Revalidate on error to revert optimistic update
+      mutate("/api/scheduled-task");
+      throw error;
+    }
   };
 
   const deleteTask = async (id: string) => {

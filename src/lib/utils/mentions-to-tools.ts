@@ -1,5 +1,5 @@
 import { ChatMention } from "app-types/chat";
-import { AllowedMCPServer } from "types/mcp";
+import { AllowedMCPServer } from "app-types/mcp";
 import { AppDefaultToolkit, DefaultToolName } from "lib/ai/tools";
 
 /**

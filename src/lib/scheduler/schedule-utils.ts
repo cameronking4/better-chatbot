@@ -7,7 +7,7 @@ import type { ScheduleConfig } from "@/types/scheduled-task";
 export function calculateNextRun(schedule: ScheduleConfig): Date | null {
   try {
     if (schedule.type === "cron") {
-      const interval = cronParser.parseExpression(schedule.expression);
+      const interval = cronParser.parse(schedule.expression);
       return interval.next().toDate();
     } else if (schedule.type === "interval") {
       const now = new Date();
@@ -74,7 +74,7 @@ export function scheduleToCron(schedule: ScheduleConfig): string | null {
 export function getScheduleDescription(schedule: ScheduleConfig): string {
   if (schedule.type === "cron") {
     try {
-      const interval = cronParser.parseExpression(schedule.expression);
+      const interval = cronParser.parse(schedule.expression);
       const next = interval.next().toDate();
       return `Cron: ${schedule.expression} (next: ${next.toLocaleString()})`;
     } catch {
@@ -94,7 +94,7 @@ export function getScheduleDescription(schedule: ScheduleConfig): string {
  */
 export function isValidCron(expression: string): boolean {
   try {
-    cronParser.parseExpression(expression);
+    cronParser.parse(expression);
     return true;
   } catch {
     return false;

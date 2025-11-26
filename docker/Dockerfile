@@ -2,17 +2,20 @@ FROM node:23-alpine AS builder
 ARG DOCKER_BUILD="1"
 WORKDIR /app
 
-# Copy everything first
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@10.2.1 --activate
+
+# Copy everything (needed for postinstall script)
 COPY . .
 
-# Install dependencies with npm
-RUN npm install
+# Install dependencies with pnpm (postinstall will run)
+RUN pnpm install --frozen-lockfile
 
 # Makes the next output standalone
 # https://github.com/vercel/next.js/discussions/65511
 ENV NEXT_STANDALONE_OUTPUT="true"
 
-RUN npm run build
+RUN pnpm run build
 
 FROM node:23-alpine AS runner
 

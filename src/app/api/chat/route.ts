@@ -56,6 +56,11 @@ const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Chat API: `),
 });
 
+// Set maximum duration to 5 minutes (300 seconds) for long-running tool calls
+// This is especially important for scheduled tasks and API key calls that may
+// involve multiple tool invocations
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
   try {
     const json = await request.json();
@@ -66,13 +71,15 @@ export async function POST(request: Request) {
     let userId: string | undefined;
     let session: Awaited<ReturnType<typeof getSession>> | null = null;
 
-    logger.info(`Auth header: ${authHeader ? 'present' : 'missing'}`);
-    logger.info(`API key configured: ${apiKey ? 'yes' : 'no'}`);
+    logger.info(`Auth header: ${authHeader ? "present" : "missing"}`);
+    logger.info(`API key configured: ${apiKey ? "yes" : "no"}`);
 
     if (authHeader?.startsWith("Bearer ") && apiKey) {
       const providedKey = authHeader.substring(7); // Remove "Bearer " prefix
-      logger.info(`Comparing keys - provided: ${providedKey}, expected: ${apiKey}`);
-      
+      logger.info(
+        `Comparing keys - provided: ${providedKey}, expected: ${apiKey}`,
+      );
+
       if (providedKey === apiKey) {
         // API key is valid - use a system user ID (UUID format)
         // This is a reserved UUID for API key requests
@@ -87,7 +94,7 @@ export async function POST(request: Request) {
     } else {
       // Fall back to session authentication
       session = await getSession();
-      
+
       if (!session?.user.id) {
         return new Response("Unauthorized", { status: 401 });
       }
@@ -300,16 +307,16 @@ export async function POST(request: Request) {
 
         const systemPrompt = mergeSystemPrompt(
           buildUserSystemPrompt(
-            session?.user ?? { 
-              id: userId!, 
-              name: "API User", 
-              email: "api@system", 
-              createdAt: new Date(), 
-              updatedAt: new Date(), 
-              emailVerified: false 
-            }, 
-            userPreferences, 
-            agent
+            session?.user ?? {
+              id: userId!,
+              name: "API User",
+              email: "api@system",
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              emailVerified: false,
+            },
+            userPreferences,
+            agent,
           ),
           buildMcpServerCustomizationsSystemPrompt(mcpServerCustomizations),
           !supportToolCall && buildToolCallUnsupportedModelSystemPrompt,
@@ -367,9 +374,9 @@ export async function POST(request: Request) {
           system: systemPrompt,
           messages: convertToModelMessages(messages),
           experimental_transform: smoothStream({ chunking: "word" }),
-          maxRetries: 2,
+          maxRetries: 3,
           tools: vercelAITooles,
-          stopWhen: stepCountIs(10),
+          stopWhen: stepCountIs(100),
           toolChoice: "auto",
           abortSignal: request.signal,
         });

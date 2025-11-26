@@ -24,6 +24,7 @@ export interface ScheduledTaskRepository {
   ): Promise<ScheduledTask | null>;
   selectScheduledTasks(userId: string): Promise<ScheduledTask[]>;
   selectDueTasks(): Promise<ScheduledTask[]>;
+  selectEnabledTasks(): Promise<ScheduledTask[]>;
   updateScheduledTask(
     id: string,
     userId: string,
@@ -156,6 +157,27 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
           lte(ScheduledTaskTable.nextRunAt, now),
         ),
       );
+
+    return results.map((result) => ({
+      ...result,
+      schedule: result.schedule as any,
+      description: result.description ?? undefined,
+      agentId: result.agentId ?? undefined,
+      chatModel: result.chatModel ?? undefined,
+      toolChoice: result.toolChoice ?? undefined,
+      mentions: result.mentions ?? [],
+      allowedMcpServers: result.allowedMcpServers ?? undefined,
+      allowedAppDefaultToolkit: result.allowedAppDefaultToolkit ?? undefined,
+      lastRunAt: result.lastRunAt ?? undefined,
+      nextRunAt: result.nextRunAt ?? undefined,
+    }));
+  },
+
+  async selectEnabledTasks() {
+    const results = await db
+      .select()
+      .from(ScheduledTaskTable)
+      .where(eq(ScheduledTaskTable.enabled, true));
 
     return results.map((result) => ({
       ...result,

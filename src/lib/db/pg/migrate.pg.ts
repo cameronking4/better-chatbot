@@ -10,7 +10,6 @@ export const runMigrate = async () => {
     migrationsFolder: join(process.cwd(), "src/lib/db/migrations/pg"),
   }).catch((err) => {
     const errorCode = err.cause?.code;
-    const _errorMessage = err.cause?.message || err.message;
 
     if (errorCode === "42P07") {
       // Duplicate table error

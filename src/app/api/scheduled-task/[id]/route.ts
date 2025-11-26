@@ -5,6 +5,7 @@ import {
   removeScheduledTaskFromQueue,
 } from "@/lib/scheduler/scheduler";
 import { calculateNextRun } from "@/lib/scheduler/schedule-utils";
+import { AppDefaultToolkit } from "@/lib/ai/tools";
 import { z } from "zod";
 
 const updateScheduledTaskSchema = z.object({
@@ -37,7 +38,7 @@ const updateScheduledTaskSchema = z.object({
   allowedMcpServers: z
     .record(z.string(), z.object({ tools: z.array(z.string()) }))
     .optional(),
-  allowedAppDefaultToolkit: z.array(z.string()).optional(),
+  allowedAppDefaultToolkit: z.array(z.nativeEnum(AppDefaultToolkit)).optional(),
 });
 
 export async function GET(
@@ -113,8 +114,13 @@ export async function PATCH(
       }
     }
 
-    // Update scheduler queue
-    await updateScheduledTaskInQueue(updatedTask);
+    // Update scheduler queue (best effort - don't fail if queue update fails)
+    try {
+      await updateScheduledTaskInQueue(updatedTask);
+    } catch (error) {
+      // Log but don't fail the request - database update succeeded
+      console.warn("Queue update failed but database update succeeded:", error);
+    }
 
     return Response.json(updatedTask);
   } catch (error) {

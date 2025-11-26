@@ -46,7 +46,6 @@ import { useAgents } from "@/hooks/queries/use-agents";
 import { Label } from "ui/label";
 import useSWR from "swr";
 import { fetcher } from "lib/utils";
-import { ScrollArea } from "ui/scroll-area";
 import { cn } from "lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/tabs";
 
@@ -83,15 +82,11 @@ export function ScheduleTaskFromMessageDialog({
     useShallow((state) => state.threadMentions[threadId] ?? []),
   );
   const chatModel = appStore((state) => state.chatModel);
-  const _allowedMcpServers = appStore((state) => state.allowedMcpServers);
-  const _allowedAppDefaultToolkit = appStore(
-    (state) => state.allowedAppDefaultToolkit,
-  );
 
   // Extract context from message metadata
   const agentId = messageMetadata?.agentId;
   const toolChoice = messageMetadata?.toolChoice || "auto";
-  const modelFromMetadata = messageMetadata?.model;
+  const modelFromMetadata = messageMetadata?.chatModel;
 
   // Use model from metadata if available, otherwise from appStore
   const taskChatModel: ChatModel | undefined = modelFromMetadata || chatModel;

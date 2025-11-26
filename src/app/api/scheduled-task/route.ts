@@ -2,6 +2,7 @@ import { getSession } from "auth/server";
 import { scheduledTaskRepository } from "@/lib/db/repository";
 import { addScheduledTaskToQueue } from "@/lib/scheduler/scheduler";
 import { calculateNextRun } from "@/lib/scheduler/schedule-utils";
+import { AppDefaultToolkit } from "@/lib/ai/tools";
 import { z } from "zod";
 
 const createScheduledTaskSchema = z.object({
@@ -32,7 +33,7 @@ const createScheduledTaskSchema = z.object({
   allowedMcpServers: z
     .record(z.string(), z.object({ tools: z.array(z.string()) }))
     .optional(),
-  allowedAppDefaultToolkit: z.array(z.string()).optional(),
+  allowedAppDefaultToolkit: z.array(z.nativeEnum(AppDefaultToolkit)).optional(),
 });
 
 export async function GET(_request: Request) {

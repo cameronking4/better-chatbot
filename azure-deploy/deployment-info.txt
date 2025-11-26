@@ -99,3 +99,6 @@ To delete all resources:
 
 WARNING: This permanently deletes all Azure resources and data!
 
+
+Last Updated: Wed Nov 26 02:49:00 EST 2025
+Image Tags: latest, 20251126-022545

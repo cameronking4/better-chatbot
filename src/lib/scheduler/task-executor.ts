@@ -81,9 +81,50 @@ export async function executeScheduledTask(
       throw new Error(`Chat API returned ${response.status}: ${errorText}`);
     }
 
-    // Stream is handled by the chat API, we just need to wait for completion
-    // The response will be a stream, but we don't need to process it here
-    // as it's already being saved to the database by the chat route
+    // Consume the stream to completion to ensure the full response is processed
+    // This is critical for long-running tool calls - if we don't consume the stream,
+    // the connection may close prematurely and the server may abort the request
+    if (!response.body) {
+      throw new Error("Response has no body");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let streamComplete = false;
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          streamComplete = true;
+          // Decode any remaining bytes
+          decoder.decode();
+          break;
+        }
+        // Decode and discard chunks - we don't need to process them here
+        // as the chat route already saves everything to the database
+        decoder.decode(value, { stream: true });
+      }
+    } catch (streamError: any) {
+      logger.warn(
+        `Stream consumption error for task ${task.name}:`,
+        streamError.message,
+      );
+      // Even if stream consumption fails, the request may have partially completed
+      // We'll continue and let the database state reflect what was saved
+    } finally {
+      try {
+        reader.releaseLock();
+      } catch (_e) {
+        // Lock may already be released, ignore
+      }
+    }
+
+    if (!streamComplete) {
+      logger.warn(`Stream may not have completed fully for task ${task.name}`);
+    } else {
+      logger.debug(`Stream consumed successfully for task ${task.name}`);
+    }
 
     const duration = Date.now() - startTime;
 

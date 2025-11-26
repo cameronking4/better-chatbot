@@ -157,8 +157,8 @@ export default async function ArchivePage({
           ) : (
             archive.threads.map((thread) => (
               <Link key={thread.id} href={`/chat/${thread.id}`}>
-                <Card className="hover:bg-accent/30 transition-all duration-200 cursor-pointer">
-                  <CardHeader className="py-4">
+                <Card className="hover:bg-accent/30 transition-all duration-200 cursor-pointer mb-4">
+                  <CardHeader className="py-1">
                     <div className="flex items-center justify-between gap-4">
                       <div className="min-w-0 flex-1">
                         <h3 className="font-medium text-base truncate mb-1">

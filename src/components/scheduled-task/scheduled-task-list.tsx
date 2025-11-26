@@ -22,6 +22,8 @@ import {
   PencilIcon,
   TrashIcon,
   ClockIcon,
+  PauseIcon,
+  Rocket,
 } from "lucide-react";
 import { getScheduleDescription } from "@/lib/scheduler/schedule-utils";
 import { useState } from "react";
@@ -34,7 +36,8 @@ import { toast } from "sonner";
 import { Skeleton } from "ui/skeleton";
 
 export function ScheduledTaskList() {
-  const { tasks, isLoading, deleteTask, executeTask } = useScheduledTasks();
+  const { tasks, isLoading, deleteTask, executeTask, updateTask } =
+    useScheduledTasks();
   const [editingTask, setEditingTask] = useState<ScheduledTask | undefined>(
     undefined,
   );
@@ -55,6 +58,18 @@ export function ScheduledTaskList() {
       } catch (error: any) {
         toast.error(error.message || "Failed to delete task");
       }
+    }
+  };
+
+  const handleToggleTask = async (task: ScheduledTask) => {
+    try {
+      const newEnabled = !task.enabled;
+      await updateTask({ id: task.id, enabled: newEnabled });
+      toast.success(
+        newEnabled ? "Task resumed successfully" : "Task paused successfully",
+      );
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update task");
     }
   };
 
@@ -203,21 +218,50 @@ export function ScheduledTaskList() {
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem
-                          onClick={() => handleExecute(task.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExecute(task.id);
+                          }}
                         >
-                          <PlayIcon className="mr-2 h-4 w-4" />
+                          <Rocket className="mr-2 h-4 w-4" />
                           Run Now
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(task)}>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleTask(task);
+                          }}
+                        >
+                          {task.enabled ? (
+                            <>
+                              <PauseIcon className="mr-2 h-4 w-4" />
+                              Pause
+                            </>
+                          ) : (
+                            <>
+                              <PlayIcon className="mr-2 h-4 w-4" />
+                              Resume
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(task);
+                          }}
+                        >
                           <PencilIcon className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => handleDelete(task.id)}
-                          className="text-red-600 focus:text-red-600"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(task.id);
+                          }}
+                          className="text-destructive"
                         >
-                          <TrashIcon className="mr-2 h-4 w-4" />
+                          <TrashIcon className="mr-2 h-4 w-4 text-destructive" />
                           Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>

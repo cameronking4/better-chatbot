@@ -2,7 +2,8 @@ import { Worker, Job } from "bullmq";
 import { redisConnection } from "./queue";
 import { scheduledTaskRepository } from "@/lib/db/repository";
 import { executeScheduledTask } from "./task-executor";
-import { calculateNextRun } from "./schedule-utils";
+import { calculateNextRun, scheduleToCron } from "./schedule-utils";
+import { addScheduledTaskToQueue } from "./scheduler";
 import logger from "logger";
 
 export interface ScheduledTaskJobData {
@@ -56,11 +57,34 @@ async function processScheduledTask(job: Job<ScheduledTaskJobData>) {
 
     // Update task's last run time and calculate next run
     const nextRunAt = calculateNextRun(task.schedule);
-    await scheduledTaskRepository.updateLastRun(
-      task.id,
-      new Date(),
-      nextRunAt,
-    );
+    await scheduledTaskRepository.updateLastRun(task.id, new Date(), nextRunAt);
+
+    // Re-schedule interval-based tasks (non-cron) for next execution
+    // Cron-based tasks use repeatable jobs which automatically persist
+    const cronExpression = scheduleToCron(task.schedule);
+    if (!cronExpression && nextRunAt) {
+      // This is an interval-based task that can't be converted to cron
+      // We need to re-add it to the queue for the next execution
+      try {
+        // Reload task to get updated nextRunAt
+        const updatedTask = await scheduledTaskRepository.selectScheduledTask(
+          task.id,
+          task.userId,
+        );
+        if (updatedTask && updatedTask.enabled) {
+          await addScheduledTaskToQueue(updatedTask);
+          logger.info(
+            `Re-scheduled interval task ${task.name} for next run at ${nextRunAt.toISOString()}`,
+          );
+        }
+      } catch (error: any) {
+        logger.warn(
+          `Failed to re-schedule interval task ${task.name}:`,
+          error.message,
+        );
+        // Don't throw - task execution succeeded, re-scheduling failure is non-critical
+      }
+    }
 
     if (result.success) {
       logger.info(
