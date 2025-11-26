@@ -455,3 +455,168 @@ export const ScheduledTaskExecutionTable = pgTable(
 export type ScheduledTaskEntity = typeof ScheduledTaskTable.$inferSelect;
 export type ScheduledTaskExecutionEntity =
   typeof ScheduledTaskExecutionTable.$inferSelect;
+
+// Task orchestration tables for long-running, multi-step task execution
+export const TaskExecutionTable = pgTable(
+  "task_execution",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => ChatThreadTable.id, { onDelete: "cascade" }),
+    status: varchar("status", {
+      enum: ["pending", "running", "paused", "completed", "failed"],
+    })
+      .notNull()
+      .default("pending"),
+    goal: text("goal").notNull(), // Original user intent
+    strategy: json("strategy").$type<{
+      steps: Array<{
+        id: string;
+        description: string;
+        type: "tool-call" | "llm-reasoning" | "checkpoint";
+        status: "pending" | "running" | "completed" | "failed";
+        estimatedDuration?: number;
+      }>;
+      totalSteps: number;
+    }>(), // Execution plan
+    currentStep: text("current_step").notNull().default("0"),
+    context: json("context").$type<{
+      summary?: string;
+      findings?: Record<string, any>;
+      toolResults?: Array<{ toolName: string; result: any }>;
+      messageHistory?: Array<{ role: string; content: string }>;
+    }>(), // Accumulated context/results
+    toolCallHistory: json("tool_call_history")
+      .array()
+      .$type<
+        Array<{
+          toolName: string;
+          args: Record<string, any>;
+          result: any;
+          timestamp: string;
+          status: "success" | "failed";
+          error?: string;
+        }>
+      >(),
+    checkpoints: json("checkpoints")
+      .array()
+      .$type<
+        Array<{
+          id: string;
+          step: number;
+          timestamp: string;
+          context: any;
+          summary: string;
+        }>
+      >(),
+    retryCount: text("retry_count").notNull().default("0"),
+    lastError: text("last_error"),
+    estimatedCompletion: timestamp("estimated_completion"),
+    agentId: uuid("agent_id").references(() => AgentTable.id, {
+      onDelete: "set null",
+    }),
+    chatModel: json("chat_model").$type<{
+      provider: string;
+      model: string;
+    }>(),
+    mentions: json("mentions").array().$type<ChatMention[]>(),
+    allowedMcpServers: json("allowed_mcp_servers").$type<
+      Record<string, AllowedMCPServer>
+    >(),
+    allowedAppDefaultToolkit: json("allowed_app_default_toolkit")
+      .array()
+      .$type<AppDefaultToolkit[]>(),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    completedAt: timestamp("completed_at"),
+  },
+  (t) => [
+    index("task_execution_user_id_idx").on(t.userId),
+    index("task_execution_thread_id_idx").on(t.threadId),
+    index("task_execution_status_idx").on(t.status),
+    index("task_execution_created_at_idx").on(t.createdAt),
+  ],
+);
+
+export const TaskExecutionStepTable = pgTable(
+  "task_execution_step",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    taskExecutionId: uuid("task_execution_id")
+      .notNull()
+      .references(() => TaskExecutionTable.id, { onDelete: "cascade" }),
+    stepIndex: text("step_index").notNull(),
+    description: text("description").notNull(),
+    type: varchar("type", {
+      enum: ["tool-call", "llm-reasoning", "checkpoint", "summarization"],
+    }).notNull(),
+    status: varchar("status", {
+      enum: ["pending", "running", "completed", "failed", "skipped"],
+    })
+      .notNull()
+      .default("pending"),
+    input: json("input").$type<Record<string, any>>(),
+    output: json("output").$type<Record<string, any>>(),
+    error: text("error"),
+    tokenUsage: json("token_usage").$type<{
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+    }>(),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    duration: text("duration"), // Duration in milliseconds as text
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("task_execution_step_task_id_idx").on(t.taskExecutionId),
+    index("task_execution_step_status_idx").on(t.status),
+  ],
+);
+
+export const TaskExecutionTraceTable = pgTable(
+  "task_execution_trace",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    taskExecutionId: uuid("task_execution_id")
+      .notNull()
+      .references(() => TaskExecutionTable.id, { onDelete: "cascade" }),
+    stepId: uuid("step_id").references(() => TaskExecutionStepTable.id, {
+      onDelete: "set null",
+    }),
+    traceType: varchar("trace_type", {
+      enum: [
+        "tool-call",
+        "llm-request",
+        "llm-response",
+        "checkpoint",
+        "error",
+        "decision",
+      ],
+    }).notNull(),
+    message: text("message").notNull(),
+    metadata: json("metadata").$type<Record<string, any>>(),
+    timestamp: timestamp("timestamp").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("task_execution_trace_task_id_idx").on(t.taskExecutionId),
+    index("task_execution_trace_type_idx").on(t.traceType),
+    index("task_execution_trace_timestamp_idx").on(t.timestamp),
+  ],
+);
+
+export type TaskExecutionEntity = typeof TaskExecutionTable.$inferSelect;
+export type TaskExecutionStepEntity =
+  typeof TaskExecutionStepTable.$inferSelect;
+export type TaskExecutionTraceEntity =
+  typeof TaskExecutionTraceTable.$inferSelect;

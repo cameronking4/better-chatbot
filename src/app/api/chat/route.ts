@@ -131,6 +131,113 @@ export async function POST(request: Request) {
       return new Response("Forbidden", { status: 403 });
     }
 
+    // Check if this request should be orchestrated as a long-running task
+    const textParts = message.parts.filter((p: any) => p.type === "text");
+    const messageText = textParts
+      .map((p: any) => p.text)
+      .join(" ")
+      .trim();
+
+    // Only check for orchestration if message is substantial and not using image tools
+    if (messageText.length > 20 && !imageTool?.model) {
+      const { TaskOrchestrator } = await import(
+        "lib/orchestrator/task-orchestrator"
+      );
+      const { queueTaskStep } = await import("lib/orchestrator/task-queue");
+      const {
+        loadMcpTools,
+        loadWorkFlowTools,
+        loadAppDefaultTools,
+      } = await import("./shared.chat");
+
+      const orchestrator = new TaskOrchestrator({
+        chatModel,
+      });
+
+      const shouldOrchestrate =
+        await orchestrator.shouldOrchestrate(messageText);
+
+      if (shouldOrchestrate) {
+        logger.info(
+          `Orchestrating request as long-running task: ${messageText.substring(0, 50)}...`,
+        );
+
+        // Load tools for decomposition
+        const mcpTools = await loadMcpTools({
+          mentions,
+          allowedMcpServers,
+        });
+
+        const workflowTools = await loadWorkFlowTools({
+          mentions,
+          dataStream: null as any,
+        });
+
+        const appDefaultTools = await loadAppDefaultTools({
+          mentions,
+          allowedAppDefaultToolkit,
+        });
+
+        const tools = {
+          ...mcpTools,
+          ...workflowTools,
+          ...appDefaultTools,
+        };
+
+        // Decompose goal
+        const strategy = await orchestrator.decomposeGoal(messageText, tools);
+
+        // Create task execution
+        const { taskExecutionRepository } = await import("lib/db/repository");
+        const task = await taskExecutionRepository.createTaskExecution({
+          userId: userId!,
+          threadId: id,
+          status: "pending",
+          goal: messageText,
+          strategy,
+          currentStep: "0",
+          context: {
+            summary: `Task started: ${messageText}`,
+            findings: {},
+            toolResults: [],
+            messageHistory: [],
+          },
+          toolCallHistory: [],
+          checkpoints: [],
+          retryCount: "0",
+          chatModel,
+          mentions,
+          allowedMcpServers,
+          allowedAppDefaultToolkit,
+        });
+
+        // Add trace
+        await taskExecutionRepository.addTrace({
+          taskExecutionId: task.id,
+          traceType: "decision",
+          message: `Task auto-created from chat with ${strategy.totalSteps} steps`,
+          metadata: { goal: messageText, strategy },
+        });
+
+        // Queue first step
+        await queueTaskStep({
+          taskId: task.id,
+          userId: userId!,
+          threadId: id,
+          stepIndex: 0,
+        });
+
+        // Return immediate response indicating task was queued
+        return Response.json({
+          id: message.id,
+          role: "assistant",
+          content: `I'll work on this as a long-running task. This will involve ${strategy.totalSteps} steps:\n\n${strategy.steps.map((s, i) => `${i + 1}. ${s.description}`).join("\n")}\n\nTask ID: ${task.id}\n\nYou can check the progress using the task status endpoint.`,
+          taskId: task.id,
+          orchestrated: true,
+        });
+      }
+    }
+
     const messages: UIMessage[] = (thread?.messages ?? []).map((m) => {
       return {
         id: m.id,
