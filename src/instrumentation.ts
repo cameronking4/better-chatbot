@@ -15,6 +15,18 @@ export async function register() {
         (m) => m.initMCPManager,
       );
       await initMCPManager();
+
+      // Initialize scheduled task worker
+      const { createScheduledTaskWorker } = await import(
+        "./lib/scheduler/worker"
+      );
+      const { syncScheduledTasksToQueue } = await import(
+        "./lib/scheduler/scheduler"
+      );
+
+      createScheduledTaskWorker();
+      await syncScheduledTasksToQueue();
+      console.log("Scheduled task worker initialized");
     }
   }
 }

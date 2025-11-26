@@ -23,6 +23,7 @@ import {
   FolderSearchIcon,
   PlusIcon,
   Waypoints,
+  CalendarClock,
 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Skeleton } from "ui/skeleton";
@@ -72,6 +73,18 @@ export function AppSidebarMenus({ user }: { user?: BasicUser }) {
                       </span>
                     ))}
                   </div>
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          </Tooltip>
+        </SidebarMenu>
+                <SidebarMenu>
+          <Tooltip>
+            <SidebarMenuItem>
+              <Link href="/scheduled-tasks">
+                <SidebarMenuButton className="font-semibold">
+                  <CalendarClock className="size-4" />
+                  Scheduled Tasks
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>

@@ -16,7 +16,7 @@ import {
 import { isNotNull } from "drizzle-orm";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
 import { UIMessage } from "ai";
-import { ChatMetadata } from "app-types/chat";
+import { ChatMetadata, ChatMention } from "app-types/chat";
 import { TipTapMentionJsonContent } from "@/types/util";
 
 export const ChatThreadTable = pgTable("chat_thread", {
@@ -374,3 +374,77 @@ export const ChatExportCommentTable = pgTable("chat_export_comment", {
 export type ArchiveEntity = typeof ArchiveTable.$inferSelect;
 export type ArchiveItemEntity = typeof ArchiveItemTable.$inferSelect;
 export type BookmarkEntity = typeof BookmarkTable.$inferSelect;
+
+// Scheduled task tables for task scheduling feature
+export const ScheduledTaskTable = pgTable(
+  "scheduled_task",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    prompt: text("prompt").notNull(),
+    schedule: json("schedule").notNull().$type<{
+      type: "cron" | "interval";
+      expression?: string; // cron expression
+      value?: number; // interval value
+      unit?: "minutes" | "hours" | "days" | "weeks"; // interval unit
+    }>(),
+    enabled: boolean("enabled").notNull().default(true),
+    agentId: uuid("agent_id").references(() => AgentTable.id, {
+      onDelete: "set null",
+    }),
+    chatModel: json("chat_model").$type<{
+      provider: string;
+      model: string;
+    }>(),
+    toolChoice: text("tool_choice").default("auto"),
+    mentions: json("mentions")
+      .array()
+      .$type<ChatMention[]>()
+      .default(sql`'{}'::json[]`),
+    lastRunAt: timestamp("last_run_at"),
+    nextRunAt: timestamp("next_run_at"),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("scheduled_task_user_id_idx").on(t.userId),
+    index("scheduled_task_next_run_idx").on(t.nextRunAt),
+    index("scheduled_task_enabled_idx").on(t.enabled),
+  ],
+);
+
+export const ScheduledTaskExecutionTable = pgTable(
+  "scheduled_task_execution",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    scheduledTaskId: uuid("scheduled_task_id")
+      .notNull()
+      .references(() => ScheduledTaskTable.id, { onDelete: "cascade" }),
+    threadId: uuid("thread_id").references(() => ChatThreadTable.id, {
+      onDelete: "set null",
+    }),
+    status: varchar("status", {
+      enum: ["pending", "running", "success", "failed"],
+    })
+      .notNull()
+      .default("pending"),
+    error: text("error"),
+    startedAt: timestamp("started_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    completedAt: timestamp("completed_at"),
+    duration: text("duration"), // Duration in milliseconds as text to avoid integer overflow
+  },
+  (t) => [
+    index("scheduled_task_execution_task_id_idx").on(t.scheduledTaskId),
+    index("scheduled_task_execution_status_idx").on(t.status),
+  ],
+);
+
+export type ScheduledTaskEntity = typeof ScheduledTaskTable.$inferSelect;
+export type ScheduledTaskExecutionEntity =
+  typeof ScheduledTaskExecutionTable.$inferSelect;

@@ -5,6 +5,7 @@ export enum AppDefaultToolkit {
   Code = "code",
   Agent = "agent",
   Workflow = "workflow",
+  Schedule = "schedule",
 }
 
 export enum DefaultToolName {
@@ -34,6 +35,8 @@ export enum DefaultToolName {
   ListEdges = "listEdges",
   GetWorkflowStructure = "getWorkflowStructure",
   ListAvailableTools = "listAvailableTools",
+  ScheduleTask = "scheduleTask",
+  ListScheduledTasks = "listScheduledTasks",
 }
 
 export const SequentialThinkingToolName = "sequential-thinking";

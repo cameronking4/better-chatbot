@@ -25,6 +25,8 @@ import { deleteEdgeTool } from "./workflow/delete-edge";
 import { listEdgesTool } from "./workflow/list-edges";
 import { getWorkflowStructureTool } from "./workflow/get-workflow-structure";
 import { listAvailableToolsTool } from "./workflow/list-available-tools";
+import { scheduleTaskTool } from "./schedule/schedule-task";
+import { listScheduledTasksTool } from "./schedule/list-scheduled-tasks";
 
 export const APP_DEFAULT_TOOL_KIT: Record<
   AppDefaultToolkit,
@@ -67,6 +69,10 @@ export const APP_DEFAULT_TOOL_KIT: Record<
     [DefaultToolName.ListEdges]: listEdgesTool,
     [DefaultToolName.GetWorkflowStructure]: getWorkflowStructureTool,
     [DefaultToolName.ListAvailableTools]: listAvailableToolsTool,
+  },
+  [AppDefaultToolkit.Schedule]: {
+    [DefaultToolName.ScheduleTask]: scheduleTaskTool,
+    [DefaultToolName.ListScheduledTasks]: listScheduledTasksTool,
   },
 };
 
