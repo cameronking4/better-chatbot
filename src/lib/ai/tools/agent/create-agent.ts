@@ -26,11 +26,7 @@ export const createAgentTool = createTool({
     icon: z
       .object({
         type: z.literal("emoji"),
-        value: z
-          .string()
-          .describe(
-            "Emoji value (e.g., '1f916')",
-          ),
+        value: z.string().describe("Emoji value (e.g., '1f916')"),
         style: z
           .record(z.string(), z.string())
           .optional()
@@ -97,7 +93,7 @@ export const createAgentTool = createTool({
       }
 
       // Convert tool names to mentions
-      let mentions: ChatMention[] = [];
+      const mentions: ChatMention[] = [];
       if (tools && tools.length > 0) {
         // Get default tools
         objectFlow(DefaultToolName).forEach((toolName) => {
@@ -128,7 +124,7 @@ export const createAgentTool = createTool({
               }
             }
           }
-        } catch (error) {
+        } catch (_error) {
           // MCP tools optional, continue without them
         }
 
@@ -146,7 +142,7 @@ export const createAgentTool = createTool({
               });
             }
           }
-        } catch (error) {
+        } catch (_error) {
           // Workflow tools optional, continue without them
         }
       }
@@ -187,4 +183,3 @@ export const createAgentTool = createTool({
     }
   },
 });
-

@@ -26,6 +26,7 @@ import {
 import { getScheduleDescription } from "@/lib/scheduler/schedule-utils";
 import { useState } from "react";
 import { ScheduledTaskDialog } from "./scheduled-task-dialog";
+import { ScheduledTaskExecutionSheet } from "./scheduled-task-execution-sheet";
 import { ScheduledTask } from "@/types/scheduled-task";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "ui/badge";
@@ -38,6 +39,8 @@ export function ScheduledTaskList() {
     undefined,
   );
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<ScheduledTask | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const handleEdit = (task: ScheduledTask) => {
     setEditingTask(task);
@@ -62,7 +65,7 @@ export function ScheduledTaskList() {
         success: "Task executed successfully",
         error: "Failed to execute task",
       });
-    } catch (error: any) {
+    } catch (_error: any) {
       // Error handled by toast promise
     }
   };
@@ -70,6 +73,20 @@ export function ScheduledTaskList() {
   const handleCreate = () => {
     setEditingTask(undefined);
     setDialogOpen(true);
+  };
+
+  const handleRowClick = (task: ScheduledTask, event: React.MouseEvent) => {
+    // Don't open sheet if clicking on the dropdown menu
+    const target = event.target as HTMLElement;
+    if (
+      target.closest("[role='menu']") ||
+      target.closest("button") ||
+      target.closest("[data-radix-popper-content-wrapper]")
+    ) {
+      return;
+    }
+    setSelectedTask(task);
+    setSheetOpen(true);
   };
 
   if (isLoading) {
@@ -100,8 +117,8 @@ export function ScheduledTaskList() {
           </p>
         </div>
         <Button onClick={handleCreate}>
-          <ClockIcon className="mr-2 h-4 w-4" />
-          Create Task
+          <ClockIcon className="h-4 w-4" />
+          Create Scheduled Task
         </Button>
       </div>
 
@@ -120,7 +137,11 @@ export function ScheduledTaskList() {
           <TableBody>
             {tasks && tasks.length > 0 ? (
               tasks.map((task) => (
-                <TableRow key={task.id}>
+                <TableRow
+                  key={task.id}
+                  className="cursor-pointer"
+                  onClick={(e) => handleRowClick(task, e)}
+                >
                   <TableCell className="font-medium">
                     <div className="flex flex-col">
                       <span>{task.name}</span>
@@ -134,11 +155,17 @@ export function ScheduledTaskList() {
                   <TableCell>{getScheduleDescription(task.schedule)}</TableCell>
                   <TableCell>
                     {task.enabled ? (
-                      <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+                      <Badge
+                        variant="outline"
+                        className="bg-green-500/10 text-green-500 border-green-500/20"
+                      >
                         Enabled
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="text-muted-foreground">
+                      <Badge
+                        variant="outline"
+                        className="text-muted-foreground"
+                      >
                         Disabled
                       </Badge>
                     )}
@@ -175,7 +202,9 @@ export function ScheduledTaskList() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleExecute(task.id)}>
+                        <DropdownMenuItem
+                          onClick={() => handleExecute(task.id)}
+                        >
                           <PlayIcon className="mr-2 h-4 w-4" />
                           Run Now
                         </DropdownMenuItem>
@@ -214,6 +243,12 @@ export function ScheduledTaskList() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         task={editingTask}
+      />
+
+      <ScheduledTaskExecutionSheet
+        task={selectedTask}
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
       />
     </div>
   );

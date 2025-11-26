@@ -17,4 +17,5 @@ export default defineConfig({
   dbCredentials: {
     url,
   },
+  tablesFilter: ["!*_migrations"],
 });

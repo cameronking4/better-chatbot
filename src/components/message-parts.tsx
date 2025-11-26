@@ -17,6 +17,7 @@ import {
   EllipsisIcon,
   FileIcon,
   Download,
+  Clock,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import { Button } from "ui/button";
@@ -64,6 +65,7 @@ import { notify } from "lib/notify";
 import { ModelProviderIcon } from "ui/model-provider-icon";
 import { appStore } from "@/app/store";
 import { BACKGROUND_COLORS, EMOJI_DATA } from "lib/const";
+import { ScheduleTaskFromMessageDialog } from "@/components/scheduled-task/schedule-task-from-message-dialog";
 
 type MessagePart = UIMessage["parts"][number];
 type TextMessagePart = Extract<MessagePart, { type: "text" }>;
@@ -73,6 +75,7 @@ interface UserMessagePartProps {
   part: TextMessagePart;
   isLast: boolean;
   message: UIMessage;
+  threadId?: string;
   setMessages?: UseChatHelpers<UIMessage>["setMessages"];
   sendMessage?: UseChatHelpers<UIMessage>["sendMessage"];
   status?: UseChatHelpers<UIMessage>["status"];
@@ -113,6 +116,7 @@ export const UserMessagePart = memo(
     isLast,
     status,
     message,
+    threadId,
     setMessages,
     sendMessage,
     readonly,
@@ -123,6 +127,7 @@ export const UserMessagePart = memo(
     const [mode, setMode] = useState<"view" | "edit">("view");
     const [isDeleting, setIsDeleting] = useState(false);
     const [expanded, setExpanded] = useState(false);
+    const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const scrolledRef = useRef(false);
 
@@ -265,11 +270,34 @@ export const UserMessagePart = memo(
                     Delete Message
                   </TooltipContent>
                 </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-3! p-4!"
+                      onClick={() => setScheduleDialogOpen(true)}
+                    >
+                      <Clock />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Schedule Task</TooltipContent>
+                </Tooltip>
               </>
             )}
           </div>
         )}
         <div ref={ref} className="min-w-0" />
+        {threadId && (
+          <ScheduleTaskFromMessageDialog
+            open={scheduleDialogOpen}
+            onOpenChange={setScheduleDialogOpen}
+            messageText={part.text}
+            threadId={threadId}
+            messageMetadata={message.metadata as ChatMetadata | undefined}
+          />
+        )}
       </div>
     );
   },

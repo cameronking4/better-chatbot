@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "ui/button";
 import {
   Dialog,
@@ -29,10 +32,11 @@ import { Switch } from "ui/switch";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useState } from "react";
-import { ScheduledTask } from "@/types/scheduled-task";
 import { useScheduledTasks } from "@/hooks/queries/use-scheduled-tasks";
 import { toast } from "sonner";
+import { ChatMetadata, ChatModel, ChatMessage } from "app-types/chat";
+import { appStore } from "@/app/store";
+import { useShallow } from "zustand/shallow";
 import { AgentToolSelector } from "@/components/agent/agent-tool-selector";
 import { ChatMention } from "app-types/chat";
 import { convertMentionsToToolConfig } from "@/lib/utils/mentions-to-tools";
@@ -40,6 +44,10 @@ import { useMcpList } from "@/hooks/queries/use-mcp-list";
 import { useWorkflowToolList } from "@/hooks/queries/use-workflow-tool-list";
 import { useAgents } from "@/hooks/queries/use-agents";
 import { Label } from "ui/label";
+import useSWR from "swr";
+import { fetcher } from "lib/utils";
+import { ScrollArea } from "ui/scroll-area";
+import { cn } from "lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/tabs";
 
 const formSchema = z.object({
@@ -53,30 +61,86 @@ const formSchema = z.object({
   enabled: z.boolean().default(true),
 });
 
-interface ScheduledTaskDialogProps {
+interface ScheduleTaskFromMessageDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  task?: ScheduledTask;
+  messageText: string;
+  threadId: string;
+  messageMetadata?: ChatMetadata;
 }
 
-export function ScheduledTaskDialog({
+export function ScheduleTaskFromMessageDialog({
   open,
   onOpenChange,
-  task,
-}: ScheduledTaskDialogProps) {
-  const { createTask, updateTask } = useScheduledTasks();
-  const [mentions, setMentions] = useState<ChatMention[]>(task?.mentions || []);
+  messageText,
+  threadId,
+  messageMetadata,
+}: ScheduleTaskFromMessageDialogProps) {
+  const { createTask } = useScheduledTasks();
+
+  // Get thread context from appStore
+  const threadMentions = appStore(
+    useShallow((state) => state.threadMentions[threadId] ?? []),
+  );
+  const chatModel = appStore((state) => state.chatModel);
+  const _allowedMcpServers = appStore((state) => state.allowedMcpServers);
+  const _allowedAppDefaultToolkit = appStore(
+    (state) => state.allowedAppDefaultToolkit,
+  );
+
+  // Extract context from message metadata
+  const agentId = messageMetadata?.agentId;
+  const toolChoice = messageMetadata?.toolChoice || "auto";
+  const modelFromMetadata = messageMetadata?.model;
+
+  // Use model from metadata if available, otherwise from appStore
+  const taskChatModel: ChatModel | undefined = modelFromMetadata || chatModel;
+
+  // State for tool selector
+  const [mentions, setMentions] = useState<ChatMention[]>(threadMentions);
   const { isLoading: isMcpLoading } = useMcpList();
   const { isLoading: isWorkflowLoading } = useWorkflowToolList();
   const { isLoading: isAgentsLoading } = useAgents({ limit: 50 });
   const isLoadingTool = isMcpLoading || isWorkflowLoading || isAgentsLoading;
+
+  // Fetch conversation messages (optional)
+  const { data: threadData } = useSWR<{
+    messages: ChatMessage[];
+  }>(threadId && open ? `/api/chat/thread/${threadId}` : null, fetcher);
+
+  const conversationMessages = useMemo(() => {
+    if (!threadData?.messages) return [];
+    // Return messages up to and including the current message
+    return threadData.messages;
+  }, [threadData]);
+
+  // State for editable conversation messages
+  const [editableMessages, setEditableMessages] = useState<
+    Array<{ id: string; role: string; text: string }>
+  >([]);
+
+  // Initialize editable messages when conversation messages load
+  useEffect(() => {
+    if (conversationMessages.length > 0) {
+      setEditableMessages(
+        conversationMessages.map((msg) => ({
+          id: msg.id,
+          role: msg.role,
+          text: msg.parts
+            .filter((p) => p.type === "text")
+            .map((p) => (p as any).text)
+            .join(" "),
+        })),
+      );
+    }
+  }, [conversationMessages]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       description: "",
-      prompt: "",
+      prompt: messageText,
       scheduleType: "interval",
       cronExpression: "0 9 * * *",
       intervalValue: 1,
@@ -87,36 +151,23 @@ export function ScheduledTaskDialog({
 
   const scheduleType = form.watch("scheduleType");
 
+  // Reset form when dialog opens or messageText changes
   useEffect(() => {
-    if (task) {
-      form.reset({
-        name: task.name,
-        description: task.description || "",
-        prompt: task.prompt,
-        scheduleType: task.schedule.type,
-        cronExpression:
-          task.schedule.type === "cron" ? task.schedule.expression : "",
-        intervalValue:
-          task.schedule.type === "interval" ? task.schedule.value : 1,
-        intervalUnit:
-          task.schedule.type === "interval" ? task.schedule.unit : "days",
-        enabled: task.enabled,
-      });
-      setMentions(task.mentions || []);
-    } else {
+    if (open) {
       form.reset({
         name: "",
         description: "",
-        prompt: "",
+        prompt: messageText,
         scheduleType: "interval",
         cronExpression: "0 9 * * *",
         intervalValue: 1,
         intervalUnit: "days",
         enabled: true,
       });
-      setMentions([]);
+      // Initialize mentions from thread context
+      setMentions(threadMentions);
     }
-  }, [task, form, open]);
+  }, [open, messageText, form, threadMentions]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -132,8 +183,10 @@ export function ScheduledTaskDialog({
               unit: values.intervalUnit!,
             };
 
-      const { allowedMcpServers, allowedAppDefaultToolkit } =
-        convertMentionsToToolConfig(mentions);
+      const {
+        allowedMcpServers: convertedMcpServers,
+        allowedAppDefaultToolkit: convertedToolkit,
+      } = convertMentionsToToolConfig(mentions);
 
       const taskData = {
         name: values.name,
@@ -141,21 +194,20 @@ export function ScheduledTaskDialog({
         prompt: values.prompt,
         schedule,
         enabled: values.enabled,
+        // Include thread context
+        agentId,
+        chatModel: taskChatModel,
+        toolChoice,
         mentions: mentions.length > 0 ? mentions : undefined,
-        allowedMcpServers,
-        allowedAppDefaultToolkit,
+        allowedMcpServers: convertedMcpServers ?? undefined,
+        allowedAppDefaultToolkit: convertedToolkit ?? undefined,
       };
 
-      if (task) {
-        await updateTask({ id: task.id, ...taskData });
-        toast.success("Task updated successfully");
-      } else {
-        await createTask(taskData);
-        toast.success("Task created successfully");
-      }
+      await createTask(taskData);
+      toast.success("Scheduled task created successfully");
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message || "Failed to save task");
+      toast.error(error.message || "Failed to create scheduled task");
     }
   }
 
@@ -163,11 +215,10 @@ export function ScheduledTaskDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>
-            {task ? "Edit Scheduled Task" : "Create Scheduled Task"}
-          </DialogTitle>
+          <DialogTitle>Schedule Task from Message</DialogTitle>
           <DialogDescription>
-            Configure a task to run automatically on a schedule.
+            Create a scheduled task using this message as the prompt. The task
+            will use the same context, tools, and settings as this conversation.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -176,10 +227,13 @@ export function ScheduledTaskDialog({
             className="flex flex-col flex-1 min-h-0"
           >
             <Tabs defaultValue="basic" className="flex-1 flex flex-col min-h-0">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="basic">Basic Info</TabsTrigger>
                 <TabsTrigger value="schedule">Schedule</TabsTrigger>
                 <TabsTrigger value="tools">Tools</TabsTrigger>
+                {editableMessages.length > 0 && (
+                  <TabsTrigger value="context">Context</TabsTrigger>
+                )}
               </TabsList>
 
               <TabsContent
@@ -373,9 +427,56 @@ export function ScheduledTaskDialog({
                   />
                   <FormDescription>
                     Select tools that will be available when this task runs.
+                    Tools from the current conversation are pre-selected.
                   </FormDescription>
                 </div>
               </TabsContent>
+
+              {editableMessages.length > 0 && (
+                <TabsContent
+                  value="context"
+                  className="flex-1 overflow-y-auto space-y-4 mt-4 bg-muted/20 rounded-lg p-4"
+                >
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-base">Conversation Context</Label>
+                    <div className="rounded-lg border p-3 bg-muted/30">
+                      <FormDescription className="mb-3">
+                        Previous messages from this conversation (editable):
+                      </FormDescription>
+                      <div className="space-y-3">
+                        {editableMessages.map((msg, idx) => (
+                          <div
+                            key={msg.id}
+                            className={cn(
+                              "text-xs rounded border p-3",
+                              msg.role === "user"
+                                ? "bg-background border-border"
+                                : "bg-muted/50 border-transparent",
+                            )}
+                          >
+                            <div className="font-medium mb-2 capitalize">
+                              {msg.role}
+                            </div>
+                            <Textarea
+                              value={msg.text}
+                              onChange={(e) => {
+                                const updated = [...editableMessages];
+                                updated[idx] = {
+                                  ...updated[idx],
+                                  text: e.target.value,
+                                };
+                                setEditableMessages(updated);
+                              }}
+                              className="min-h-[100px] text-xs resize-none"
+                              placeholder={`${msg.role} message...`}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              )}
             </Tabs>
 
             <DialogFooter className="mt-4 border-t pt-4">
@@ -386,7 +487,7 @@ export function ScheduledTaskDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit">Save</Button>
+              <Button type="submit">Create Task</Button>
             </DialogFooter>
           </form>
         </Form>

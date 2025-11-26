@@ -95,6 +95,14 @@ export function AgentToolSelector({
               <AvatarImage src={m.icon?.value} />
               <AvatarFallback>{m.name.slice(0, 1)}</AvatarFallback>
             </Avatar>
+          ) : m.type === "agent" ? (
+            <Avatar
+              style={m.icon?.style}
+              className="size-3 ring-[1px] ring-input rounded-full"
+            >
+              <AvatarImage src={m.icon?.value} />
+              <AvatarFallback>{m.name.slice(0, 1)}</AvatarFallback>
+            </Avatar>
           ) : (
             <HammerIcon className="size-3" />
           )}
@@ -116,7 +124,7 @@ export function AgentToolSelector({
       onSelectMention={handleSelectMention}
       onClose={noop}
       open={open && hasEditAccess && !disabled}
-      disabledType={["agent"]}
+      disabledType={[]}
       onOpenChange={(newOpen) => hasEditAccess && !disabled && setOpen(newOpen)}
       top={0}
       left={0}

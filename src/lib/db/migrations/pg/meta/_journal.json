@@ -120,6 +120,20 @@
       "when": 1764112984180,
       "tag": "0016_milky_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1764119479229,
+      "tag": "0017_perpetual_meteorite",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1764121314859,
+      "tag": "0018_clear_prodigy",
+      "breakpoints": true
     }
   ]
 }

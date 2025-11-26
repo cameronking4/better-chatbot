@@ -95,6 +95,7 @@ const PurePreviewMessage = ({
                   readonly={readonly}
                   isLast={isLastPart}
                   message={message}
+                  threadId={threadId}
                   setMessages={setMessages}
                   sendMessage={sendMessage}
                 />

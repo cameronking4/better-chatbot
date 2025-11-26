@@ -52,7 +52,8 @@ export async function executeScheduledTask(
     });
 
     // Call the chat API internally
-    const chatApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+    const chatApiUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
     const apiKey = process.env.NEXT_PUBLIC_API_KEY ?? process.env.CHAT_API_KEY;
 
     const response = await fetch(`${chatApiUrl}/api/chat`, {
@@ -70,16 +71,14 @@ export async function executeScheduledTask(
         },
         toolChoice: task.toolChoice || "auto",
         mentions: task.mentions || [],
-        allowedAppDefaultToolkit: [],
-        allowedMcpServers: {},
+        allowedAppDefaultToolkit: task.allowedAppDefaultToolkit ?? undefined,
+        allowedMcpServers: task.allowedMcpServers ?? undefined,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(
-        `Chat API returned ${response.status}: ${errorText}`,
-      );
+      throw new Error(`Chat API returned ${response.status}: ${errorText}`);
     }
 
     // Stream is handled by the chat API, we just need to wait for completion

@@ -2,7 +2,7 @@ import { getSession } from "auth/server";
 import { scheduledTaskRepository } from "@/lib/db/repository";
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getSession();

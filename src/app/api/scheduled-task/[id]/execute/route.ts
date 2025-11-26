@@ -3,7 +3,7 @@ import { scheduledTaskRepository } from "@/lib/db/repository";
 import { executeScheduledTask } from "@/lib/scheduler/task-executor";
 
 export async function POST(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getSession();

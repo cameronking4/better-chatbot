@@ -184,8 +184,7 @@ export const listAvailableToolsTool = createTool({
           type: "app-tool",
           id: "updateNode",
           name: "Update Node",
-          description:
-            "Update an existing node's configuration in a workflow.",
+          description: "Update an existing node's configuration in a workflow.",
           category: "default",
         },
         {
@@ -269,7 +268,7 @@ export const listAvailableToolsTool = createTool({
             }
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // MCP tools optional, continue without them
       }
 
@@ -289,7 +288,7 @@ export const listAvailableToolsTool = createTool({
             visibility: workflow.visibility,
           });
         }
-      } catch (error) {
+      } catch (_error) {
         // Workflow tools optional, continue without them
       }
 

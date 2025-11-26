@@ -18,6 +18,8 @@ import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
 import { UIMessage } from "ai";
 import { ChatMetadata, ChatMention } from "app-types/chat";
 import { TipTapMentionJsonContent } from "@/types/util";
+import { AllowedMCPServer } from "app-types/mcp";
+import { AppDefaultToolkit } from "lib/ai/tools";
 
 export const ChatThreadTable = pgTable("chat_thread", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
@@ -103,7 +105,7 @@ export const UserTable = pgTable("user", {
   emailVerified: boolean("email_verified").default(false).notNull(),
   password: text("password"),
   image: text("image"),
-  preferences: json("preferences").default({}).$type<UserPreferences>(),
+  preferences: json("preferences").$type<UserPreferences>(),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   banned: boolean("banned"),
@@ -235,10 +237,8 @@ export const WorkflowNodeDataTable = pgTable(
     kind: text("kind").notNull(),
     name: text("name").notNull(),
     description: text("description"),
-    uiConfig: json("ui_config").$type<DBNode["uiConfig"]>().default({}),
-    nodeConfig: json("node_config")
-      .$type<Partial<DBNode["nodeConfig"]>>()
-      .default({}),
+    uiConfig: json("ui_config").$type<DBNode["uiConfig"]>(),
+    nodeConfig: json("node_config").$type<Partial<DBNode["nodeConfig"]>>(),
     createdAt: timestamp("created_at")
       .notNull()
       .default(sql`CURRENT_TIMESTAMP`),
@@ -261,7 +261,7 @@ export const WorkflowEdgeTable = pgTable("workflow_edge", {
   target: uuid("target")
     .notNull()
     .references(() => WorkflowNodeDataTable.id, { onDelete: "cascade" }),
-  uiConfig: json("ui_config").$type<DBEdge["uiConfig"]>().default({}),
+  uiConfig: json("ui_config").$type<DBEdge["uiConfig"]>(),
   createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
@@ -401,14 +401,21 @@ export const ScheduledTaskTable = pgTable(
       model: string;
     }>(),
     toolChoice: text("tool_choice").default("auto"),
-    mentions: json("mentions")
+    mentions: json("mentions").array().$type<ChatMention[]>(),
+    allowedMcpServers: json("allowed_mcp_servers").$type<
+      Record<string, AllowedMCPServer>
+    >(),
+    allowedAppDefaultToolkit: json("allowed_app_default_toolkit")
       .array()
-      .$type<ChatMention[]>()
-      .default(sql`'{}'::json[]`),
+      .$type<AppDefaultToolkit[]>(),
     lastRunAt: timestamp("last_run_at"),
     nextRunAt: timestamp("next_run_at"),
-    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [
     index("scheduled_task_user_id_idx").on(t.userId),

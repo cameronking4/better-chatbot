@@ -73,6 +73,8 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
         chatModel: input.chatModel,
         toolChoice: input.toolChoice ?? "auto",
         mentions: input.mentions ?? [],
+        allowedMcpServers: input.allowedMcpServers,
+        allowedAppDefaultToolkit: input.allowedAppDefaultToolkit,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -86,6 +88,8 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
       chatModel: result.chatModel ?? undefined,
       toolChoice: result.toolChoice ?? undefined,
       mentions: result.mentions ?? [],
+      allowedMcpServers: result.allowedMcpServers ?? undefined,
+      allowedAppDefaultToolkit: result.allowedAppDefaultToolkit ?? undefined,
       lastRunAt: result.lastRunAt ?? undefined,
       nextRunAt: result.nextRunAt ?? undefined,
     };
@@ -95,7 +99,12 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
     const [result] = await db
       .select()
       .from(ScheduledTaskTable)
-      .where(and(eq(ScheduledTaskTable.id, id), eq(ScheduledTaskTable.userId, userId)));
+      .where(
+        and(
+          eq(ScheduledTaskTable.id, id),
+          eq(ScheduledTaskTable.userId, userId),
+        ),
+      );
 
     if (!result) return null;
 
@@ -107,6 +116,8 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
       chatModel: result.chatModel ?? undefined,
       toolChoice: result.toolChoice ?? undefined,
       mentions: result.mentions ?? [],
+      allowedMcpServers: result.allowedMcpServers ?? undefined,
+      allowedAppDefaultToolkit: result.allowedAppDefaultToolkit ?? undefined,
       lastRunAt: result.lastRunAt ?? undefined,
       nextRunAt: result.nextRunAt ?? undefined,
     };
@@ -127,6 +138,8 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
       chatModel: result.chatModel ?? undefined,
       toolChoice: result.toolChoice ?? undefined,
       mentions: result.mentions ?? [],
+      allowedMcpServers: result.allowedMcpServers ?? undefined,
+      allowedAppDefaultToolkit: result.allowedAppDefaultToolkit ?? undefined,
       lastRunAt: result.lastRunAt ?? undefined,
       nextRunAt: result.nextRunAt ?? undefined,
     }));
@@ -152,6 +165,8 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
       chatModel: result.chatModel ?? undefined,
       toolChoice: result.toolChoice ?? undefined,
       mentions: result.mentions ?? [],
+      allowedMcpServers: result.allowedMcpServers ?? undefined,
+      allowedAppDefaultToolkit: result.allowedAppDefaultToolkit ?? undefined,
       lastRunAt: result.lastRunAt ?? undefined,
       nextRunAt: result.nextRunAt ?? undefined,
     }));
@@ -164,7 +179,12 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
         ...input,
         updatedAt: new Date(),
       })
-      .where(and(eq(ScheduledTaskTable.id, id), eq(ScheduledTaskTable.userId, userId)))
+      .where(
+        and(
+          eq(ScheduledTaskTable.id, id),
+          eq(ScheduledTaskTable.userId, userId),
+        ),
+      )
       .returning();
 
     return {
@@ -175,6 +195,8 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
       chatModel: result.chatModel ?? undefined,
       toolChoice: result.toolChoice ?? undefined,
       mentions: result.mentions ?? [],
+      allowedMcpServers: result.allowedMcpServers ?? undefined,
+      allowedAppDefaultToolkit: result.allowedAppDefaultToolkit ?? undefined,
       lastRunAt: result.lastRunAt ?? undefined,
       nextRunAt: result.nextRunAt ?? undefined,
     };
@@ -183,7 +205,12 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
   async deleteScheduledTask(id, userId) {
     await db
       .delete(ScheduledTaskTable)
-      .where(and(eq(ScheduledTaskTable.id, id), eq(ScheduledTaskTable.userId, userId)));
+      .where(
+        and(
+          eq(ScheduledTaskTable.id, id),
+          eq(ScheduledTaskTable.userId, userId),
+        ),
+      );
   },
 
   async updateLastRun(id, lastRunAt, nextRunAt) {
@@ -260,6 +287,7 @@ export const pgScheduledTaskRepository: ScheduledTaskRepository = {
       id: result.id,
       scheduledTaskId: result.scheduledTaskId,
       threadId: result.threadId ?? undefined,
+      threadTitle: result.threadTitle ?? undefined,
       status: result.status,
       error: result.error ?? undefined,
       startedAt: result.startedAt,

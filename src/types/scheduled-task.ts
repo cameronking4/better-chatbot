@@ -1,4 +1,6 @@
 import { ChatMention } from "./chat";
+import { AllowedMCPServer } from "./mcp";
+import { AppDefaultToolkit } from "lib/ai/tools";
 
 export type ScheduleType = "cron" | "interval";
 
@@ -32,6 +34,8 @@ export interface ScheduledTask {
   };
   toolChoice?: string;
   mentions?: ChatMention[];
+  allowedMcpServers?: Record<string, AllowedMCPServer>;
+  allowedAppDefaultToolkit?: AppDefaultToolkit[];
   lastRunAt?: Date;
   nextRunAt?: Date;
   createdAt: Date;
@@ -48,6 +52,7 @@ export interface ScheduledTaskExecution {
   id: string;
   scheduledTaskId: string;
   threadId?: string;
+  threadTitle?: string;
   status: ScheduledTaskExecutionStatus;
   error?: string;
   startedAt: Date;
@@ -68,6 +73,8 @@ export interface CreateScheduledTaskInput {
   };
   toolChoice?: string;
   mentions?: ChatMention[];
+  allowedMcpServers?: Record<string, AllowedMCPServer>;
+  allowedAppDefaultToolkit?: AppDefaultToolkit[];
 }
 
 export interface UpdateScheduledTaskInput {
@@ -83,4 +90,6 @@ export interface UpdateScheduledTaskInput {
   };
   toolChoice?: string;
   mentions?: ChatMention[];
+  allowedMcpServers?: Record<string, AllowedMCPServer>;
+  allowedAppDefaultToolkit?: AppDefaultToolkit[];
 }

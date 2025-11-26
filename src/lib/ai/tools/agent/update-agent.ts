@@ -122,7 +122,7 @@ export const updateAgentTool = createTool({
 
         // Convert tool names to mentions if tools array provided
         if (tools !== undefined) {
-          let mentions: ChatMention[] = [];
+          const mentions: ChatMention[] = [];
 
           if (tools.length > 0) {
             // Get default tools
@@ -154,7 +154,7 @@ export const updateAgentTool = createTool({
                   }
                 }
               }
-            } catch (error) {
+            } catch (_error) {
               // MCP tools optional, continue without them
             }
 
@@ -171,7 +171,7 @@ export const updateAgentTool = createTool({
                   });
                 }
               }
-            } catch (error) {
+            } catch (_error) {
               // Workflow tools optional, continue without them
             }
           }
@@ -221,4 +221,3 @@ export const updateAgentTool = createTool({
     }
   },
 });
-

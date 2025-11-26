@@ -34,10 +34,14 @@ const updateScheduledTaskSchema = z.object({
     .optional(),
   toolChoice: z.string().optional(),
   mentions: z.array(z.any()).optional(),
+  allowedMcpServers: z
+    .record(z.string(), z.object({ tools: z.array(z.string()) }))
+    .optional(),
+  allowedAppDefaultToolkit: z.array(z.string()).optional(),
 });
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getSession();
@@ -115,7 +119,9 @@ export async function PATCH(
     return Response.json(updatedTask);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return new Response(JSON.stringify((error as any).errors), { status: 400 });
+      return new Response(JSON.stringify((error as any).errors), {
+        status: 400,
+      });
     }
     console.error("Failed to update scheduled task:", error);
     return new Response("Internal Server Error", { status: 500 });
@@ -123,7 +129,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getSession();
