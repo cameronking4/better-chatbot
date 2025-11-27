@@ -3,6 +3,14 @@ import { agentRepository } from "lib/db/repository";
 import { getSession } from "auth/server";
 import { notFound, redirect } from "next/navigation";
 
+// UUID v4 format validation regex
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isValidUUID(id: string): boolean {
+  return UUID_REGEX.test(id);
+}
+
 export default async function AgentPage({
   params,
 }: {
@@ -18,6 +26,11 @@ export default async function AgentPage({
   // For new agents, pass no initial data
   if (id === "new") {
     return <EditAgent userId={session.user.id} />;
+  }
+
+  // Validate UUID format before querying database
+  if (!isValidUUID(id)) {
+    notFound();
   }
 
   // Fetch the agent data on the server

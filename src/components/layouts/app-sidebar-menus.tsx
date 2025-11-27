@@ -24,6 +24,7 @@ import {
   PlusIcon,
   Waypoints,
   CalendarClock,
+  Terminal,
 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Skeleton } from "ui/skeleton";
@@ -78,7 +79,7 @@ export function AppSidebarMenus({ user }: { user?: BasicUser }) {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
-                <SidebarMenu>
+        <SidebarMenu>
           <Tooltip>
             <SidebarMenuItem>
               <Link href="/scheduled-tasks">
@@ -90,13 +91,25 @@ export function AppSidebarMenus({ user }: { user?: BasicUser }) {
             </SidebarMenuItem>
           </Tooltip>
         </SidebarMenu>
-        <SidebarMenu>
+        <SidebarMenu className="group/mcp">
           <Tooltip>
             <SidebarMenuItem>
               <Link href="/mcp">
                 <SidebarMenuButton className="font-semibold">
                   <MCPIcon className="size-4 fill-accent-foreground" />
                   {t("Layout.mcpConfiguration")}
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          </Tooltip>
+        </SidebarMenu>
+        <SidebarMenu>
+          <Tooltip>
+            <SidebarMenuItem>
+              <Link href="/mcp/playground">
+                <SidebarMenuButton className="font-semibold">
+                  <Terminal className="size-4" />
+                  {t("MCP.playground")}
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
