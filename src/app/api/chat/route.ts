@@ -13,13 +13,14 @@ import { customModelProvider, isToolCallUnsupportedModel } from "lib/ai/models";
 
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 
-import { agentRepository, chatRepository } from "lib/db/repository";
+import { agentRepository, chatRepository, apiKeyRepository } from "lib/db/repository";
 import globalLogger from "logger";
 import {
   buildMcpServerCustomizationsSystemPrompt,
   buildUserSystemPrompt,
   buildToolCallUnsupportedModelSystemPrompt,
 } from "lib/ai/prompts";
+import { checkRateLimit } from "lib/api-keys/rate-limiter";
 import {
   chatApiSchemaRequestBodySchema,
   ChatMention,
@@ -65,31 +66,68 @@ export async function POST(request: Request) {
   try {
     const json = await request.json();
 
-    // Check for API key authentication first
+    // Authentication: API key or session
     const authHeader = request.headers.get("Authorization");
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY ?? process.env.CHAT_API_KEY;
     let userId: string | undefined;
     let session: Awaited<ReturnType<typeof getSession>> | null = null;
+    let apiKeyId: string | undefined;
 
     logger.info(`Auth header: ${authHeader ? "present" : "missing"}`);
-    logger.info(`API key configured: ${apiKey ? "yes" : "no"}`);
 
-    if (authHeader?.startsWith("Bearer ") && apiKey) {
+    // Try API key authentication first
+    if (authHeader?.startsWith("Bearer ")) {
       const providedKey = authHeader.substring(7); // Remove "Bearer " prefix
-      logger.info(
-        `Comparing keys - provided: ${providedKey}, expected: ${apiKey}`,
-      );
 
-      if (providedKey === apiKey) {
-        // API key is valid - use a system user ID (UUID format)
-        // This is a reserved UUID for API key requests
-        // You can customize this to use a specific user ID from your database
-        userId = "dbea8f30-4a6f-4125-87f5-c465b16e2ec9";
-        logger.info("Request authenticated via API key");
+      // Check new user-delegated API keys first
+      const authenticatedUserId = await apiKeyRepository.authenticate(providedKey);
+
+      if (authenticatedUserId) {
+        userId = authenticatedUserId;
+        logger.info("Request authenticated via user API key");
+
+        // Get API key details for rate limiting
+        const apiKey = await apiKeyRepository.listByUser(userId);
+        const matchingKey = apiKey.find(k =>
+          providedKey.startsWith(k.keyPrefix.replace('****', ''))
+        );
+
+        if (matchingKey) {
+          apiKeyId = matchingKey.id;
+
+          // Check rate limit
+          const rateLimit = checkRateLimit(matchingKey.id, matchingKey.rateLimit);
+          if (!rateLimit.allowed) {
+            return new Response(
+              JSON.stringify({
+                error: "Rate limit exceeded",
+                limit: rateLimit.limit,
+                remaining: rateLimit.remaining,
+                resetAt: rateLimit.resetAt,
+              }),
+              {
+                status: 429,
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-RateLimit-Limit": rateLimit.limit.toString(),
+                  "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+                  "X-RateLimit-Reset": rateLimit.resetAt.toISOString(),
+                },
+              },
+            );
+          }
+        }
       } else {
-        // Invalid API key
-        logger.warn("Invalid API key provided");
-        return new Response("Invalid API key", { status: 401 });
+        // Fall back to legacy NEXT_PUBLIC_API_KEY for backward compatibility
+        const legacyApiKey = process.env.NEXT_PUBLIC_API_KEY ?? process.env.CHAT_API_KEY;
+        if (legacyApiKey && providedKey === legacyApiKey) {
+          // Legacy API key is valid - use reserved UUID
+          userId = "dbea8f30-4a6f-4125-87f5-c465b16e2ec9";
+          logger.info("Request authenticated via legacy API key (deprecated)");
+        } else {
+          // Invalid API key
+          logger.warn("Invalid API key provided");
+          return new Response("Invalid API key", { status: 401 });
+        }
       }
     } else {
       // Fall back to session authentication
