@@ -156,6 +156,33 @@
     "nodesArranged": "Layout applied successfully",
     "visibilityUpdated": "Visibility updated successfully"
   },
+  "ScheduledTask": {
+    "title": "Scheduled Task",
+    "whatIsScheduledTask": "What is a Scheduled Task?",
+    "myScheduledTasks": "My Scheduled Tasks",
+    "noScheduledTasks": "No scheduled tasks available",
+    "noScheduledTasksDescription": "Create your first scheduled task to automate recurring workflows.",
+    "createScheduledTask": "Create Scheduled Task",
+    "createScheduledTaskDescription": "Automate tasks to run on a schedule using cron expressions or intervals.",
+    "greeting": {
+      "automatedExecutionTitle": "Automated Task Execution",
+      "automatedExecutionDescription": "Schedule tasks to run automatically at specified times or intervals. Perfect for recurring workflows, reports, and automated processes.",
+      "flexibleSchedulingTitle": "Flexible Scheduling",
+      "flexibleSchedulingDescription": "Use cron expressions for precise timing (e.g., 'every day at 9 AM') or intervals for simple recurring tasks (e.g., 'every 30 minutes').",
+      "recurringTasksTitle": "Recurring Tasks",
+      "recurringTasksDescription": "Set up tasks that run automatically without manual intervention. Great for daily digests, weekly reports, and periodic updates.",
+      "exampleTitle": "Usage Example",
+      "exampleDescription": "Create a \"Daily News Digest\" task that runs every morning at 9 AM to summarize the latest news, or a \"Weekly Analytics Report\" that generates insights every Monday.",
+      "scheduleTypesTitle": "Schedule Types",
+      "cronDescription": "Precise timing with cron expressions",
+      "intervalDescription": "Simple recurring intervals",
+      "ctaMessage": "Start creating scheduled tasks to automate your workflows!"
+    },
+    "example": {
+      "dailyDigest": "Daily News Digest",
+      "weeklyReport": "Weekly Analytics Report"
+    }
+  },
   "Auth": {
     "SignIn": {
       "title": "Welcome Back",

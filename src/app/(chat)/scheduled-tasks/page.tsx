@@ -1,11 +1,14 @@
-"use client";
+import ScheduledTaskListPage from "@/components/scheduled-task/scheduled-task-list-page";
+import { getSession } from "auth/server";
+import { redirect } from "next/navigation";
 
-import { ScheduledTaskList } from "@/components/scheduled-task/scheduled-task-list";
+// Force dynamic rendering to avoid static generation issues with session
+export const dynamic = "force-dynamic";
 
-export default function ScheduledTasksPage() {
-  return (
-    <div className="container mx-auto p-10">
-      <ScheduledTaskList />
-    </div>
-  );
+export default async function Page() {
+  const session = await getSession();
+  if (!session) {
+    redirect("/sign-in");
+  }
+  return <ScheduledTaskListPage userRole={session.user.role} />;
 }

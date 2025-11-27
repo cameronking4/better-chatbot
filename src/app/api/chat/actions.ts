@@ -246,3 +246,51 @@ export async function exportChatAction({
     expiresAt: expiresAt ?? undefined,
   });
 }
+
+export async function generateCronExpressionAction({
+  model,
+  prompt,
+}: {
+  model?: ChatModel;
+  prompt: string;
+}) {
+  const systemPrompt = `You are a cron expression generator. Your task is to convert natural language descriptions of schedules into valid cron expressions.
+
+A cron expression consists of 5 fields separated by spaces:
+- Minute (0-59)
+- Hour (0-23)
+- Day of month (1-31)
+- Month (1-12)
+- Day of week (0-7, where 0 and 7 are Sunday)
+
+Common patterns:
+- "0 9 * * *" = Every day at 9:00 AM
+- "0 */2 * * *" = Every 2 hours
+- "0 0 * * 0" = Every Sunday at midnight
+- "0 9 * * 1-5" = Every weekday at 9:00 AM
+- "0 0 1 * *" = First day of every month at midnight
+- "*/15 * * * *" = Every 15 minutes
+- "0 9,17 * * *" = At 9:00 AM and 5:00 PM every day
+
+Return ONLY the cron expression (5 fields separated by spaces) without any explanation, markdown, or additional text.`;
+
+  const { text } = await generateText({
+    model: customModelProvider.getModel(model),
+    system: systemPrompt,
+    prompt,
+  });
+
+  // Extract just the cron expression (5 space-separated fields)
+  const cronMatch = text.trim().match(/^(\S+\s+\S+\s+\S+\s+\S+\s+\S+)/);
+  if (cronMatch) {
+    return cronMatch[1].trim();
+  }
+
+  // Fallback: return the first line if it looks like a cron expression
+  const firstLine = text.trim().split("\n")[0];
+  if (firstLine.split(" ").length === 5) {
+    return firstLine;
+  }
+
+  throw new Error("Failed to generate valid cron expression");
+}

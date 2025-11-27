@@ -41,6 +41,12 @@ import { useWorkflowToolList } from "@/hooks/queries/use-workflow-tool-list";
 import { useAgents } from "@/hooks/queries/use-agents";
 import { Label } from "ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "ui/tabs";
+import { WandSparklesIcon } from "lucide-react";
+import { notify } from "lib/notify";
+import { generateCronExpressionAction } from "@/app/api/chat/actions";
+import { appStore } from "@/app/store";
+import { SelectModel } from "@/components/select-model";
+import { useCallback } from "react";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -86,6 +92,41 @@ export function ScheduledTaskDialog({
   });
 
   const scheduleType = form.watch("scheduleType");
+
+  const handleGenerateCronExpression = useCallback(async () => {
+    let model = appStore.getState().chatModel;
+    const result = await notify.prompt({
+      title: "Generate Cron Expression",
+      description: (
+        <div className="flex items-center gap-2">
+          <p className="mr-auto">
+            Describe when you want the task to run (e.g., "every day at 9 AM",
+            "every Monday at 3 PM", "every 30 minutes").
+          </p>
+          <SelectModel
+            onSelect={(m) => {
+              model = m;
+            }}
+          />
+        </div>
+      ),
+    });
+    if (!result) return;
+
+    toast.promise(
+      generateCronExpressionAction({
+        model,
+        prompt: result,
+      }).then((cronExpr) => {
+        form.setValue("cronExpression", cronExpr);
+      }),
+      {
+        loading: "Generating cron expression...",
+        success: "Cron expression generated successfully",
+        error: "Failed to generate cron expression",
+      },
+    );
+  }, [form]);
 
   useEffect(() => {
     if (task) {
@@ -273,19 +314,22 @@ export function ScheduledTaskDialog({
                       name="cronExpression"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Cron Expression</FormLabel>
+                          <div className="flex items-center justify-between">
+                            <FormLabel>Cron Expression</FormLabel>
+                          </div>
                           <FormControl>
                             <Input placeholder="0 9 * * *" {...field} />
                           </FormControl>
                           <FormDescription>
-                            <a
-                              href="https://crontab.guru/"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline"
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleGenerateCronExpression}
+                              className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                             >
-                              Help me
-                            </a>
+                              <WandSparklesIcon className="size-3" />
+                              Generate with AI
+                            </Button>
                           </FormDescription>
                           <FormMessage />
                         </FormItem>

@@ -25,6 +25,7 @@ import {
   Loader2,
   Clock,
   ExternalLink,
+  PencilIcon,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useScheduledTaskExecutions } from "@/hooks/queries/use-scheduled-task-executions";
@@ -33,11 +34,13 @@ import {
   ScheduledTaskExecutionStatus,
 } from "@/types/scheduled-task";
 import { cn } from "lib/utils";
+import { Button } from "ui/button";
 
 interface ScheduledTaskExecutionSheetProps {
   task: ScheduledTask | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: (task: ScheduledTask) => void;
 }
 
 function formatDuration(duration?: string): string {
@@ -69,6 +72,7 @@ export function ScheduledTaskExecutionSheet({
   task,
   open,
   onOpenChange,
+  onEdit,
 }: ScheduledTaskExecutionSheetProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -103,14 +107,32 @@ export function ScheduledTaskExecutionSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-2 md:p-4">
         <SheetHeader className="pb-4 border-b">
-          <SheetTitle className="text-lg">
-            {task?.name || "Execution History"}
-          </SheetTitle>
-          {task?.description && (
-            <SheetDescription className="text-xs mt-1">
-              {task.description}
-            </SheetDescription>
-          )}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <SheetTitle className="text-lg">
+                {task?.name || "Execution History"}
+              </SheetTitle>
+              {task?.description && (
+                <SheetDescription className="text-xs mt-1">
+                  {task.description}
+                </SheetDescription>
+              )}
+            </div>
+            {task && onEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onEdit(task);
+                  onOpenChange(false);
+                }}
+                className="shrink-0"
+              >
+                <PencilIcon className="h-3.5 w-3.5 mr-1.5" />
+                Edit
+              </Button>
+            )}
+          </div>
         </SheetHeader>
 
         <div className="mt-4 space-y-3">
@@ -178,7 +200,7 @@ export function ScheduledTaskExecutionSheet({
                   )}
                 >
                   {/* Status Icon */}
-                  <div className="flex-shrink-0 mt-0.5">
+                  <div className="shrink-0 mt-0.5">
                     {getStatusIcon(execution.status)}
                   </div>
 

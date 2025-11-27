@@ -25,8 +25,30 @@ ENV NODE_ENV=production
 # disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
+# Install sudo, Python, pip, Azure CLI, and build tools (devbox for workbench)
+RUN apk update && apk add --no-cache \
+    python3 \
+    python3-dev \
+    py3-pip \
+    sudo \
+    curl \
+    bash \
+    gcc \
+    g++ \
+    make \
+    libffi-dev \
+    openssl-dev \
+    cargo \
+    musl-dev \
+    linux-headers \
+    && pip3 install --upgrade pip --break-system-packages \
+    && pip3 install --upgrade azure-cli --break-system-packages
+
+# Give 'nextjs' user passwordless sudo for future runtime installs
+RUN echo "nextjs ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/nextjs
 
 COPY --from=builder /app/public ./public
 

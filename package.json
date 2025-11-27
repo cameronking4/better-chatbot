@@ -45,7 +45,11 @@
     "docker:app": "docker build -f docker/Dockerfile -t better-chatbot . && docker run -p 3000:3000 -e NO_HTTPS=1 better-chatbot",
     "prepare": "husky",
     "playwright:install": "playwright install",
-    "check": "pnpm lint:fix && pnpm check-types && pnpm test"
+    "check": "pnpm lint:fix && pnpm check-types && pnpm test",
+    "deploy": "cd azure-deploy && ./deploy.sh",
+    "deploy:quick": "cd azure-deploy && ./quick-deploy.sh",
+    "deploy:skip-build": "cd azure-deploy && ./deploy.sh --skip-build",
+    "deploy:skip-env": "cd azure-deploy && ./deploy.sh --skip-env"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^2.0.45",
