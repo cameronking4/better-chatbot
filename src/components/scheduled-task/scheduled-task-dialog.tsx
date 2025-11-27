@@ -47,6 +47,7 @@ import { generateCronExpressionAction } from "@/app/api/chat/actions";
 import { appStore } from "@/app/store";
 import { SelectModel } from "@/components/select-model";
 import { useCallback } from "react";
+import { ChatModel } from "app-types/chat";
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -57,6 +58,12 @@ const formSchema = z.object({
   intervalValue: z.coerce.number().min(1).optional(),
   intervalUnit: z.enum(["minutes", "hours", "days", "weeks"]).optional(),
   enabled: z.boolean().default(true),
+  chatModel: z
+    .object({
+      provider: z.string(),
+      model: z.string(),
+    })
+    .optional(),
 });
 
 interface ScheduledTaskDialogProps {
@@ -88,6 +95,7 @@ export function ScheduledTaskDialog({
       intervalValue: 1,
       intervalUnit: "days",
       enabled: true,
+      chatModel: appStore.getState().chatModel,
     },
   });
 
@@ -142,6 +150,7 @@ export function ScheduledTaskDialog({
         intervalUnit:
           task.schedule.type === "interval" ? task.schedule.unit : "days",
         enabled: task.enabled,
+        chatModel: task.chatModel || appStore.getState().chatModel,
       });
       setMentions(task.mentions || []);
     } else {
@@ -154,6 +163,7 @@ export function ScheduledTaskDialog({
         intervalValue: 1,
         intervalUnit: "days",
         enabled: true,
+        chatModel: appStore.getState().chatModel,
       });
       setMentions([]);
     }
@@ -182,6 +192,7 @@ export function ScheduledTaskDialog({
         prompt: values.prompt,
         schedule,
         enabled: values.enabled,
+        chatModel: values.chatModel,
         mentions: mentions.length > 0 ? mentions : undefined,
         allowedMcpServers,
         allowedAppDefaultToolkit,
@@ -225,7 +236,7 @@ export function ScheduledTaskDialog({
 
               <TabsContent
                 value="basic"
-                className="flex-1 overflow-y-auto space-y-4 mt-4 bg-muted/20 rounded-lg p-4"
+                className="flex-1 overflow-y-auto space-y-4 bg-muted/20 rounded-lg p-4"
               >
                 <FormField
                   control={form.control}
@@ -277,9 +288,9 @@ export function ScheduledTaskDialog({
 
               <TabsContent
                 value="schedule"
-                className="flex-1 overflow-y-auto space-y-4 mt-4 bg-muted/20 rounded-lg p-4"
+                className="flex-1 overflow-y-auto space-y-4 bg-muted/20 rounded-lg p-4"
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-4 p-4 rounded-lg border bg-muted/20">
                   <FormField
                     control={form.control}
                     name="scheduleType"
@@ -382,6 +393,27 @@ export function ScheduledTaskDialog({
                 </div>
                 <FormField
                   control={form.control}
+                  name="chatModel"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col gap-2 rounded-lg border p-4 bg-muted/20">
+                      <FormLabel>Model</FormLabel>
+                      <FormControl>
+                        <SelectModel
+                          currentModel={field.value}
+                          onSelect={(model: ChatModel) => {
+                            field.onChange(model);
+                          }}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        The AI model to use when executing this task.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="enabled"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
@@ -404,7 +436,7 @@ export function ScheduledTaskDialog({
 
               <TabsContent
                 value="tools"
-                className="flex-1 overflow-y-auto space-y-4 mt-4 bg-muted/20 rounded-lg p-4"
+                className="flex-1 overflow-y-auto space-y-4 bg-muted/20 rounded-lg p-4"
               >
                 <div className="flex flex-col gap-2">
                   <Label className="text-base">Tools</Label>
