@@ -455,3 +455,39 @@ export const ScheduledTaskExecutionTable = pgTable(
 export type ScheduledTaskEntity = typeof ScheduledTaskTable.$inferSelect;
 export type ScheduledTaskExecutionEntity =
   typeof ScheduledTaskExecutionTable.$inferSelect;
+
+// API Key table for user-delegated API key governance
+export const ApiKeyTable = pgTable(
+  "api_key",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 255 }).notNull(),
+    keyHash: varchar("key_hash", { length: 255 }).notNull().unique(),
+    keyPrefix: varchar("key_prefix", { length: 20 }).notNull(),
+    lastUsedAt: timestamp("last_used_at"),
+    usageCount: text("usage_count").notNull().default("0"), // Using text to avoid bigint overflow
+    rateLimit: text("rate_limit").notNull().default("60"), // Requests per minute
+    expiresAt: timestamp("expires_at"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    revokedAt: timestamp("revoked_at"),
+    scopes: json("scopes").array().default([]).$type<string[]>(),
+    metadata: json("metadata").default({}).$type<Record<string, unknown>>(),
+  },
+  (table) => [
+    index("api_key_user_id_idx").on(table.userId),
+    index("api_key_key_hash_idx").on(table.keyHash),
+    index("api_key_key_prefix_idx").on(table.keyPrefix),
+    index("api_key_expires_at_idx").on(table.expiresAt).where(isNotNull(table.expiresAt)),
+  ],
+);
+
+export type ApiKeyEntity = typeof ApiKeyTable.$inferSelect;
+export type ApiKeyInsert = typeof ApiKeyTable.$inferInsert;
