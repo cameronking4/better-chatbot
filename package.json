@@ -46,6 +46,7 @@
     "prepare": "husky",
     "playwright:install": "playwright install",
     "check": "pnpm lint:fix && pnpm check-types && pnpm test",
+    "verify:workflows": "tsx scripts/verify-workflows.ts",
     "deploy": "cd azure-deploy && ./deploy.sh",
     "deploy:quick": "cd azure-deploy && ./quick-deploy.sh",
     "deploy:skip-build": "cd azure-deploy && ./deploy.sh --skip-build",
