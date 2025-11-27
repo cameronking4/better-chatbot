@@ -1,11 +1,10 @@
 import { pgDb as db } from "../db.pg";
-import { ApiKeyTable, UserTable } from "../schema.pg";
+import { ApiKeyTable } from "../schema.pg";
 import { and, eq, desc } from "drizzle-orm";
 import { generateUUID } from "lib/utils";
 import {
   generateApiKey,
   hashApiKey,
-  verifyApiKey,
   getKeyPrefix,
 } from "@/lib/api-keys/generator";
 import {

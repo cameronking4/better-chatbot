@@ -180,7 +180,7 @@ export function MCPPlaygroundResponse({
               <div className="space-y-4">
                 <PreviewMessage
                   message={parsedMessage}
-                  prevMessage={null}
+                  prevMessage={undefined}
                   readonly={true}
                   threadId="playground"
                 />

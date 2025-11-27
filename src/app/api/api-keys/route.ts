@@ -1,7 +1,6 @@
 import { getSession } from "auth/server";
 import { apiKeyRepository } from "@/lib/db/repository";
 import { z } from "zod";
-import { CreateApiKeyRequest } from "@/types/api-key";
 
 const CreateApiKeySchema = z.object({
   name: z.string().min(1).max(100),
@@ -60,7 +59,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return Response.json(
-        { error: "Invalid input", details: error.errors },
+        { error: "Invalid input", details: error.issues },
         { status: 400 },
       );
     }

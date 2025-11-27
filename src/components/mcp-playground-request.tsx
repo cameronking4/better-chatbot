@@ -1,8 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { useTranslations } from "next-intl";
-import { Label } from "ui/label";
 import { ScrollArea } from "ui/scroll-area";
 import { generateUUID } from "lib/utils";
 import { useAgents } from "@/hooks/queries/use-agents";
@@ -25,7 +23,6 @@ interface MCPPlaygroundRequestProps {
 }
 
 export function MCPPlaygroundRequest({ config }: MCPPlaygroundRequestProps) {
-  const _t = useTranslations("MCP");
   const { agents } = useAgents();
   const { data: workflows = [] } = useSWR("/api/workflow", fetcher);
 

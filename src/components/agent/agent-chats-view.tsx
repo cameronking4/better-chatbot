@@ -45,8 +45,6 @@ export function AgentChatsView({ agent }: AgentChatsViewProps) {
   }, [threads, searchQuery]);
 
   const groupedThreads = useMemo(() => {
-    if (!filteredThreads) return [];
-
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -62,6 +60,8 @@ export function AgentChatsView({ agent }: AgentChatsViewProps) {
       lastWeek: [] as ThreadWithLastMessage[],
       older: [] as ThreadWithLastMessage[],
     };
+
+    if (!filteredThreads) return groups;
 
     filteredThreads.forEach((thread) => {
       const threadDate = thread.lastMessageAt

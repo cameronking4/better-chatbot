@@ -5,7 +5,6 @@ import { AutoHeight } from "ui/auto-height";
 
 import { appStore } from "@/app/store";
 import { useShallow } from "zustand/shallow";
-import { isShortcutEvent, Shortcuts } from "lib/keyboard-shortcuts";
 import {
   Drawer,
   DrawerContent,

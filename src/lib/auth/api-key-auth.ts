@@ -1,8 +1,7 @@
 import "server-only";
-import { Request } from "next/server";
 import { apiKeyRepository } from "@/lib/db/repository";
 import { hashApiKey } from "@/lib/api-keys/generator";
-import { validateApiKey, isKeyActive } from "@/lib/api-keys/validator";
+import { validateApiKey } from "@/lib/api-keys/validator";
 import { checkRateLimit } from "@/lib/api-keys/rate-limiter";
 import { ApiKey } from "@/types/api-key";
 

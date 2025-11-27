@@ -1,5 +1,4 @@
 import { getSession } from "auth/server";
-import { apiKeyRepository } from "@/lib/db/repository";
 import { hasAdminPermission } from "@/lib/auth/permissions";
 import { ApiKeyTable, UserTable } from "@/lib/db/pg/schema.pg";
 import { pgDb as db } from "@/lib/db/pg/db.pg";

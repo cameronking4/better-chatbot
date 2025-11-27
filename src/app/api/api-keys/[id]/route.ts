@@ -69,7 +69,7 @@ export async function PATCH(
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return Response.json(
-        { error: "Invalid input", details: error.errors },
+        { error: "Invalid input", details: error.issues },
         { status: 400 },
       );
     }
