@@ -87,6 +87,14 @@ const openShortcutsPopupShortcut: Shortcut = {
   },
 };
 
+const searchChatsShortcut: Shortcut = {
+  description: "searchChats",
+  shortcut: {
+    key: "S",
+    command: true,
+  },
+};
+
 export const Shortcuts = {
   openNewChat: openNewChatShortcut,
   openChatPreferences: openChatPreferencesShortcut,
@@ -97,6 +105,7 @@ export const Shortcuts = {
   deleteThread: deleteThreadShortcut,
   toolMode: toolModeShortcut,
   openShortcutsPopup: openShortcutsPopupShortcut,
+  searchChats: searchChatsShortcut,
 };
 
 export const isShortcutEvent = (

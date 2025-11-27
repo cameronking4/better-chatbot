@@ -11,7 +11,13 @@ import {
 import { SidebarGroupContent, SidebarMenu, SidebarMenuItem } from "ui/sidebar";
 import { SidebarGroup } from "ui/sidebar";
 import { ThreadDropdown } from "../thread-dropdown";
-import { ChevronDown, ChevronUp, MoreHorizontal, Trash } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  MoreHorizontal,
+  Trash,
+  Search,
+} from "lucide-react";
 import { useMounted } from "@/hooks/use-mounted";
 import { appStore } from "@/app/store";
 import { Button } from "ui/button";
@@ -31,13 +37,15 @@ import { useShallow } from "zustand/shallow";
 import { useRouter } from "next/navigation";
 import useSWR, { mutate } from "swr";
 import { handleErrorWithToast } from "ui/shared-toast";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import { useTranslations } from "next-intl";
 import { TextShimmer } from "ui/text-shimmer";
 import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import { deduplicateByKey, groupBy } from "lib/utils";
 import { ChatThread } from "app-types/chat";
+import { SearchChatsDialog } from "./search-chats-dialog";
+import { isShortcutEvent, Shortcuts } from "lib/keyboard-shortcuts";
 
 type ThreadGroup = {
   label: string;
@@ -59,6 +67,8 @@ export function AppSidebarThreads() {
   );
   // State to track if expanded view is active
   const [isExpanded, setIsExpanded] = useState(false);
+  // State to track search dialog
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const { data: threadList, isLoading } = useSWR("/api/thread", fetcher, {
     onError: handleErrorWithToast,
@@ -170,6 +180,30 @@ export function AppSidebarThreads() {
     });
   };
 
+  // Handle keyboard shortcut for search (CTRL+S / CMD+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input/textarea
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      if (isShortcutEvent(e, Shortcuts.searchChats)) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsSearchOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   if (isLoading || threadList?.length === 0)
     return (
       <SidebarGroup>
@@ -225,6 +259,12 @@ export function AppSidebarThreads() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent side="right" align="start">
+                          <DropdownMenuItem
+                            onClick={() => setIsSearchOpen(true)}
+                          >
+                            <Search />
+                            {t("searchAllChats")}
+                          </DropdownMenuItem>
                           <DropdownMenuItem
                             variant="destructive"
                             onClick={handleDeleteAllThreads}
@@ -320,6 +360,7 @@ export function AppSidebarThreads() {
           </SidebarMenuItem>
         </SidebarMenu>
       )}
+      <SearchChatsDialog open={isSearchOpen} onOpenChange={setIsSearchOpen} />
     </>
   );
 }

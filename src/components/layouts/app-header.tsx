@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "ui/tooltip";
 import {
   AudioWaveformIcon,
   ChevronDown,
+  Command,
   MessageCircleDashed,
   PanelLeft,
 } from "lucide-react";
@@ -96,6 +97,38 @@ export function AppHeader() {
       <div className="flex-1" />
       {showActionButtons && (
         <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size={"icon"}
+                variant={"ghost"}
+                className="bg-secondary/40"
+                onClick={() => {
+                  appStoreMutate({ openShortcutsPopup: true });
+                }}
+              >
+                <Command className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent align="end" side="bottom">
+              <div className="text-xs flex items-center gap-2">
+                {t("KeyboardShortcuts.openShortcutsPopup")}
+                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                  {getShortcutKeyList(Shortcuts.openShortcutsPopup).map(
+                    (key) => (
+                      <span
+                        className="w-5 h-5 flex items-center justify-center bg-muted rounded "
+                        key={key}
+                      >
+                        {key}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

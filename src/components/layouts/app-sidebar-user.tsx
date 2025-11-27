@@ -140,7 +140,7 @@ export function AppSidebarUserInner(props: {
             <DropdownMenuItem
               onClick={() => {
                 window.open(
-                  "https://github.com/cgoinglove/better-chatbot/issues/new",
+                  "https://github.com/cameronking4/better-chatbot/issues/new",
                   "_blank",
                 );
               }}
@@ -148,14 +148,7 @@ export function AppSidebarUserInner(props: {
               <GithubIcon className="size-4 fill-foreground" />
               <span>{t("reportAnIssue")}</span>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                window.open("https://discord.gg/gCRu69Upnp", "_blank");
-              }}
-            >
-              <DiscordIcon className="size-4 fill-foreground" />
-              <span>{t("joinCommunity")}</span>
-            </DropdownMenuItem>
+
             <DropdownMenuSeparator />
 
             <DropdownMenuItem

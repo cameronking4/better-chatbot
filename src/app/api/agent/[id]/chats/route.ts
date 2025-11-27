@@ -20,7 +20,7 @@ export async function GET(
 
   // Query to get threads that have messages from the specified agent
   const threadsWithAgent = await db
-    .selectDistinctOn([ChatThreadTable.id], {
+    .select({
       threadId: ChatThreadTable.id,
       title: ChatThreadTable.title,
       createdAt: ChatThreadTable.createdAt,
@@ -40,8 +40,13 @@ export async function GET(
         sql`${ChatMessageTable.metadata}->>'agentId' = ${agentId}`,
       ),
     )
-    .groupBy(ChatThreadTable.id)
-    .orderBy(desc(sql`last_message_at`));
+    .groupBy(
+      ChatThreadTable.id,
+      ChatThreadTable.title,
+      ChatThreadTable.createdAt,
+      ChatThreadTable.userId,
+    )
+    .orderBy(desc(sql`MAX(${ChatMessageTable.createdAt})`));
 
   // Filter by search query if provided
   const filteredThreads = searchQuery

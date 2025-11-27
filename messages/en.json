@@ -353,8 +353,8 @@
     }
   },
   "Layout": {
-    "workflow": "Workflow",
-    "admin": "Admin",
+    "workflow": "Workflows",
+    "admin": "Admin Center",
     "users": "Users",
     "toggleSidebar": "Toggle Sidebar",
     "newChat": "New Chat",
@@ -405,6 +405,13 @@
     "language": "Language",
     "showAllChats": "View All Chats",
     "showLessChats": "Show less",
+    "searchAllChats": "Search All Chats",
+    "searchAllChatsDescription": "Search through all your chats by title or conversation content",
+    "searchChatsPlaceholder": "Search chats...",
+    "searching": "Searching...",
+    "noChatsFound": "No chats found",
+    "searchResults": "Search Results",
+    "matchedInContent": "Matched in content",
     "reportAnIssue": "Report an issue",
     "joinCommunity": "Join Community"
   },
@@ -495,7 +502,8 @@
     "openChatPreferences": "Open Chat Preferences",
     "deleteThread": "Delete Chat",
     "openShortcutsPopup": "Open Shortcuts Popup",
-    "toggleVoiceChat": "Toggle Voice Chat"
+    "toggleVoiceChat": "Toggle Voice Chat",
+    "searchChats": "Search All Chats"
   },
   "User": {
     "Profile": {
