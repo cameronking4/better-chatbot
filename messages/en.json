@@ -452,6 +452,7 @@
     "generateAgentDetailedGreeting": "Hello! I'll help you create your own agent. What would you like to create? You can write briefly or in detail.",
     "inputPromptHere": "input prompt here...",
     "agentNamePlaceholder": "better-agent",
+    "browseChats": "Browse Chats",
     "myAgents": "My Agents",
     "bookmarkedAgents": "Bookmarked Agents",
     "sharedAgents": "Shared Agents",

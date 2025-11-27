@@ -1,6 +1,6 @@
 "use client";
 import { appStore } from "@/app/store";
-import { AudioWaveformIcon, PencilLine } from "lucide-react";
+import { AudioWaveformIcon, PencilLine, MessageSquare } from "lucide-react";
 import { type PropsWithChildren, useState } from "react";
 import { Command, CommandGroup, CommandItem, CommandList } from "ui/command";
 import { Separator } from "ui/separator";
@@ -30,6 +30,16 @@ export function AgentDropdown({ agent, children, side, align }: Props) {
         <Command>
           <CommandList>
             <CommandGroup>
+              <CommandItem className="cursor-pointer p-0">
+                <Link
+                  href={`/agent/${agent.id}/chats`}
+                  className="flex items-center gap-2 w-full px-2 py-1 rounded"
+                  onClick={() => setOpen(false)}
+                >
+                  <MessageSquare className="text-foreground" />
+                  <span>{t("Agent.browseChats")}</span>
+                </Link>
+              </CommandItem>
               <CommandItem className="cursor-pointer p-0">
                 <div
                   className="flex items-center gap-2 w-full px-2 py-1 rounded"
