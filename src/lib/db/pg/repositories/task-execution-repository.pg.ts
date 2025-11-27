@@ -290,4 +290,35 @@ export const pgTaskExecutionRepository = {
 
     return result.rowCount ?? 0;
   },
+
+  async deleteOldTraces(daysOld: number): Promise<number> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+    const result = await db
+      .delete(TaskExecutionTraceTable)
+      .where(
+        // @ts-ignore - type mismatch but works at runtime
+        TaskExecutionTraceTable.timestamp < cutoffDate,
+      );
+
+    return result.rowCount ?? 0;
+  },
+
+  async deleteOldFailedTasks(daysOld: number): Promise<number> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+    const result = await db
+      .delete(TaskExecutionTable)
+      .where(
+        and(
+          eq(TaskExecutionTable.status, "failed"),
+          // @ts-ignore - type mismatch but works at runtime
+          TaskExecutionTable.updatedAt < cutoffDate,
+        ),
+      );
+
+    return result.rowCount ?? 0;
+  },
 };

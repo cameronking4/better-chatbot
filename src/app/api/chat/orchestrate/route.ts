@@ -1,7 +1,7 @@
 import { getSession } from "auth/server";
 import { taskExecutionRepository, chatRepository } from "lib/db/repository";
 import { TaskOrchestrator } from "lib/orchestrator/task-orchestrator";
-import { queueTaskStep } from "lib/orchestrator/task-queue";
+import { queueTaskStep, cancelJob } from "lib/orchestrator/task-queue";
 import {
   loadMcpTools,
   loadWorkFlowTools,
@@ -44,7 +44,15 @@ export async function POST(request: NextRequest) {
     if (authHeader?.startsWith("Bearer ") && apiKey) {
       const providedKey = authHeader.substring(7);
       if (providedKey === apiKey) {
-        userId = "dbea8f30-4a6f-4125-87f5-c465b16e2ec9"; // System user
+        // Use configured system user ID from environment variable or require session auth
+        const systemUserId = process.env.SYSTEM_USER_ID;
+        if (!systemUserId) {
+          return Response.json(
+            { error: "System user not configured. Please set SYSTEM_USER_ID environment variable or use session authentication." },
+            { status: 500 }
+          );
+        }
+        userId = systemUserId;
         logger.info("Request authenticated via API key");
       } else {
         return Response.json({ error: "Invalid API key" }, { status: 401 });
@@ -100,21 +108,38 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Load available tools for decomposition
-    const mcpTools = await loadMcpTools({
-      mentions,
-      allowedMcpServers,
-    });
+    // Load available tools for decomposition in parallel
+    const [mcpTools, workflowTools, appDefaultTools] = await Promise.all([
+      loadMcpTools({
+        mentions,
+        allowedMcpServers,
+      }),
+      loadWorkFlowTools({
+        mentions,
+        dataStream: null as any,
+      }),
+      loadAppDefaultTools({
+        mentions,
+        allowedAppDefaultToolkit,
+      }),
+    ]);
 
-    const workflowTools = await loadWorkFlowTools({
-      mentions,
-      dataStream: null as any,
-    });
-
-    const appDefaultTools = await loadAppDefaultTools({
-      mentions,
-      allowedAppDefaultToolkit,
-    });
+    // Validate no tool name collisions
+    const allToolNames = [
+      ...Object.keys(mcpTools),
+      ...Object.keys(workflowTools),
+      ...Object.keys(appDefaultTools),
+    ];
+    const duplicates = allToolNames.filter(
+      (name, i) => allToolNames.indexOf(name) !== i
+    );
+    if (duplicates.length > 0) {
+      logger.error(`Duplicate tool names detected: ${duplicates.join(", ")}`);
+      return Response.json(
+        { error: `Tool name collision detected: ${duplicates.join(", ")}` },
+        { status: 500 }
+      );
+    }
 
     const tools = {
       ...mcpTools,
@@ -207,7 +232,15 @@ export async function GET(request: NextRequest) {
     if (authHeader?.startsWith("Bearer ") && apiKey) {
       const providedKey = authHeader.substring(7);
       if (providedKey === apiKey) {
-        userId = "dbea8f30-4a6f-4125-87f5-c465b16e2ec9";
+        // Use configured system user ID from environment variable
+        const systemUserId = process.env.SYSTEM_USER_ID;
+        if (!systemUserId) {
+          return Response.json(
+            { error: "System user not configured" },
+            { status: 500 }
+          );
+        }
+        userId = systemUserId;
       } else {
         return Response.json({ error: "Invalid API key" }, { status: 401 });
       }
@@ -277,6 +310,108 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     logger.error("Error getting task status:", error);
+    return Response.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * DELETE /api/chat/orchestrate?taskId=xxx
+ * Cancels a running task
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    // Check authentication
+    const authHeader = request.headers.get("Authorization");
+    const apiKey = process.env.NEXT_PUBLIC_API_KEY ?? process.env.CHAT_API_KEY;
+    let userId: string | undefined;
+
+    if (authHeader?.startsWith("Bearer ") && apiKey) {
+      const providedKey = authHeader.substring(7);
+      if (providedKey === apiKey) {
+        const systemUserId = process.env.SYSTEM_USER_ID;
+        if (!systemUserId) {
+          return Response.json(
+            { error: "System user not configured" },
+            { status: 500 }
+          );
+        }
+        userId = systemUserId;
+      } else {
+        return Response.json({ error: "Invalid API key" }, { status: 401 });
+      }
+    } else {
+      const session = await getSession();
+      if (!session?.user.id) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      userId = session.user.id;
+    }
+
+    const { searchParams } = new URL(request.url);
+    const taskId = searchParams.get("taskId");
+
+    if (!taskId) {
+      return Response.json(
+        { error: "Missing taskId parameter" },
+        { status: 400 },
+      );
+    }
+
+    const task = await taskExecutionRepository.getTaskExecution(taskId);
+
+    if (!task) {
+      return Response.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    // Verify ownership
+    if (task.userId !== userId) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Can only cancel pending or running tasks
+    if (task.status !== "pending" && task.status !== "running") {
+      return Response.json(
+        { error: `Cannot cancel task with status: ${task.status}` },
+        { status: 400 }
+      );
+    }
+
+    // Cancel the job in the queue
+    try {
+      await cancelJob(taskId);
+      logger.info(`Cancelled queue job for task ${taskId}`);
+    } catch (error) {
+      logger.warn(`Failed to cancel queue job for task ${taskId}:`, error);
+      // Continue anyway to update task status
+    }
+
+    // Update task status
+    await taskExecutionRepository.updateTaskExecution(taskId, {
+      status: "failed",
+      lastError: "Task cancelled by user",
+      completedAt: new Date(),
+    });
+
+    // Add trace
+    await taskExecutionRepository.addTrace({
+      taskExecutionId: taskId,
+      traceType: "decision",
+      message: "Task cancelled by user",
+      metadata: { cancelledBy: userId },
+    });
+
+    logger.info(`Task ${taskId} cancelled successfully`);
+
+    return Response.json({
+      taskId,
+      status: "cancelled",
+      message: "Task cancelled successfully",
+    });
+  } catch (error: any) {
+    logger.error("Error cancelling task:", error);
     return Response.json(
       { error: error.message || "Internal server error" },
       { status: 500 },

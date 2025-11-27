@@ -5,9 +5,24 @@ import { TaskExecutionEntity } from "lib/db/pg/schema.pg";
 import { nanoid } from "nanoid";
 import globalLogger from "logger";
 import { colorize } from "consola/utils";
+import { z } from "zod";
 
 const logger = globalLogger.withDefaults({
   message: colorize("cyan", `Task Orchestrator: `),
+});
+
+// Zod schema for validating LLM-generated task strategies
+const SubTaskSchema = z.object({
+  id: z.string().optional(),
+  description: z.string().min(1, "Step description cannot be empty"),
+  type: z.enum(["tool-call", "llm-reasoning", "checkpoint"]),
+  status: z.enum(["pending", "running", "completed", "failed"]).optional(),
+  estimatedDuration: z.number().positive().optional(),
+});
+
+const TaskStrategySchema = z.object({
+  steps: z.array(SubTaskSchema).min(1, "Strategy must have at least one step"),
+  totalSteps: z.number().int().positive(),
 });
 
 export interface TaskContext {
@@ -148,7 +163,30 @@ Respond in JSON format:
         maxTokens: 2000,
       });
 
-      const strategy = JSON.parse(result.text) as TaskStrategy;
+      // Parse and validate the LLM output
+      let parsed: any;
+      try {
+        parsed = JSON.parse(result.text);
+      } catch (parseError) {
+        logger.error("Failed to parse LLM output as JSON:", {
+          text: result.text.substring(0, 200),
+          error: parseError,
+        });
+        throw new Error("LLM returned invalid JSON");
+      }
+
+      // Validate with Zod schema
+      const validationResult = TaskStrategySchema.safeParse(parsed);
+      if (!validationResult.success) {
+        logger.error("LLM output failed schema validation:", {
+          text: result.text.substring(0, 200),
+          errors: validationResult.error.errors,
+        });
+        // Fall back to single-step strategy
+        throw new Error("LLM returned invalid task strategy structure");
+      }
+
+      const strategy = validationResult.data as TaskStrategy;
 
       // Add IDs and default status if not present
       strategy.steps = strategy.steps.map((step, idx) => ({
