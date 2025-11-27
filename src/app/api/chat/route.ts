@@ -13,7 +13,7 @@ import { customModelProvider, isToolCallUnsupportedModel } from "lib/ai/models";
 
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 
-import { agentRepository, chatRepository } from "lib/db/repository";
+import { agentRepository, chatRepository, apiKeyRepository } from "lib/db/repository";
 import globalLogger from "logger";
 import {
   buildMcpServerCustomizationsSystemPrompt,
@@ -67,28 +67,35 @@ export async function POST(request: Request) {
 
     // Check for API key authentication first
     const authHeader = request.headers.get("Authorization");
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY ?? process.env.CHAT_API_KEY;
     let userId: string | undefined;
     let session: Awaited<ReturnType<typeof getSession>> | null = null;
 
     logger.info(`Auth header: ${authHeader ? "present" : "missing"}`);
-    logger.info(`API key configured: ${apiKey ? "yes" : "no"}`);
 
-    if (authHeader?.startsWith("Bearer ") && apiKey) {
+    if (authHeader?.startsWith("Bearer ")) {
       const providedKey = authHeader.substring(7); // Remove "Bearer " prefix
-      logger.info(
-        `Comparing keys - provided: ${providedKey}, expected: ${apiKey}`,
-      );
 
-      if (providedKey === apiKey) {
-        // API key is valid - use a system user ID (UUID format)
-        // This is a reserved UUID for API key requests
-        // You can customize this to use a specific user ID from your database
+      // First check legacy system-wide API key for backwards compatibility
+      const legacyApiKey = process.env.NEXT_PUBLIC_API_KEY ?? process.env.CHAT_API_KEY;
+
+      if (legacyApiKey && providedKey === legacyApiKey) {
+        // Legacy API key is valid - use a system user ID (UUID format)
         userId = "dbea8f30-4a6f-4125-87f5-c465b16e2ec9";
-        logger.info("Request authenticated via API key");
+        logger.info("Request authenticated via legacy API key");
+      } else if (providedKey.startsWith("bcb_live_") || providedKey.startsWith("bcb_test_")) {
+        // User-governed API key
+        const verification = await apiKeyRepository.verify(providedKey);
+
+        if (verification.valid && verification.userId) {
+          userId = verification.userId;
+          logger.info(`Request authenticated via user API key for user: ${userId}`);
+        } else {
+          logger.warn("Invalid user API key provided");
+          return new Response("Invalid API key", { status: 401 });
+        }
       } else {
-        // Invalid API key
-        logger.warn("Invalid API key provided");
+        // Invalid API key format
+        logger.warn("Invalid API key format provided");
         return new Response("Invalid API key", { status: 401 });
       }
     } else {

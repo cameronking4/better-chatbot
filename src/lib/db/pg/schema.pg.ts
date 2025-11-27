@@ -455,3 +455,41 @@ export const ScheduledTaskExecutionTable = pgTable(
 export type ScheduledTaskEntity = typeof ScheduledTaskTable.$inferSelect;
 export type ScheduledTaskExecutionEntity =
   typeof ScheduledTaskExecutionTable.$inferSelect;
+
+// API Key table for user-governed programmatic access
+export const ApiKeyTable = pgTable(
+  "api_key",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // User-friendly label
+    keyPrefix: text("key_prefix").notNull(), // First 8 chars for display (e.g., "sk_live_")
+    keyHash: text("key_hash").notNull(), // bcrypt hash of full key
+    scopes: json("scopes")
+      .array()
+      .$type<string[]>()
+      .notNull()
+      .default(sql`ARRAY['chat:read', 'chat:write']::text[]`), // Permissions
+    lastUsedAt: timestamp("last_used_at"), // Track usage
+    expiresAt: timestamp("expires_at"), // null = never expires
+    revokedAt: timestamp("revoked_at"), // null = active
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [
+    index("api_key_user_id_idx").on(t.userId),
+    index("api_key_prefix_idx").on(t.keyPrefix),
+    // Partial index for active keys only
+    index("api_key_active_idx")
+      .on(t.userId)
+      .where(sql`${t.revokedAt} IS NULL`),
+  ],
+);
+
+export type ApiKeyEntity = typeof ApiKeyTable.$inferSelect;
