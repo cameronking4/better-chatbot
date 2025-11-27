@@ -134,6 +134,13 @@
       "when": 1764121314859,
       "tag": "0018_clear_prodigy",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1764218939374,
+      "tag": "0019_sturdy_miracleman",
+      "breakpoints": true
     }
   ]
 }

@@ -26,6 +26,7 @@ import {
   MoonStar,
   ChevronRight,
   Settings,
+  Key,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { appStore } from "@/app/store";
@@ -159,6 +160,16 @@ export function AppSidebarUserInner(props: {
               <Settings className="size-4 text-foreground" />
               <span>User Settings</span>
             </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => appStoreMutate({ openApiKeysPopup: true })}
+              className="cursor-pointer"
+              data-testid="api-keys-menu-item"
+            >
+              <Key className="size-4 text-foreground" />
+              <span>{t("apiKeys")}</span>
+            </DropdownMenuItem>
+
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout} className="cursor-pointer">
               <LogOutIcon className="size-4 text-foreground" />

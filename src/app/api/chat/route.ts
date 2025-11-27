@@ -51,6 +51,7 @@ import { nanoBananaTool, openaiImageTool } from "lib/ai/tools/image";
 import { ImageToolName } from "lib/ai/tools";
 import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
 import { serverFileStorage } from "lib/file-storage";
+import { validateApiKeyFromHeader } from "@/lib/auth/api-key-auth";
 
 const logger = globalLogger.withDefaults({
   message: colorize("blackBright", `Chat API: `),
@@ -65,40 +66,48 @@ export async function POST(request: Request) {
   try {
     const json = await request.json();
 
-    // Check for API key authentication first
-    const authHeader = request.headers.get("Authorization");
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY ?? process.env.CHAT_API_KEY;
+    // Authentication priority:
+    // 1. Session authentication (active user session)
+    // 2. User API key authentication (programmatic access)
+    // 3. Legacy NEXT_PUBLIC_API_KEY (backward compatibility)
     let userId: string | undefined;
     let session: Awaited<ReturnType<typeof getSession>> | null = null;
 
-    logger.info(`Auth header: ${authHeader ? "present" : "missing"}`);
-    logger.info(`API key configured: ${apiKey ? "yes" : "no"}`);
-
-    if (authHeader?.startsWith("Bearer ") && apiKey) {
-      const providedKey = authHeader.substring(7); // Remove "Bearer " prefix
-      logger.info(
-        `Comparing keys - provided: ${providedKey}, expected: ${apiKey}`,
-      );
-
-      if (providedKey === apiKey) {
-        // API key is valid - use a system user ID (UUID format)
-        // This is a reserved UUID for API key requests
-        // You can customize this to use a specific user ID from your database
-        userId = "dbea8f30-4a6f-4125-87f5-c465b16e2ec9";
-        logger.info("Request authenticated via API key");
-      } else {
-        // Invalid API key
-        logger.warn("Invalid API key provided");
-        return new Response("Invalid API key", { status: 401 });
-      }
+    // First, try session authentication
+    session = await getSession();
+    if (session?.user.id) {
+      userId = session.user.id;
+      logger.info("Request authenticated via session");
     } else {
-      // Fall back to session authentication
-      session = await getSession();
+      // No active session, try API key authentication
+      const authHeader = request.headers.get("Authorization");
+      const legacyApiKey =
+        process.env.NEXT_PUBLIC_API_KEY ?? process.env.CHAT_API_KEY;
 
-      if (!session?.user.id) {
+      if (authHeader?.startsWith("Bearer ")) {
+        const providedKey = authHeader.substring(7); // Remove "Bearer " prefix
+
+        // Try user API key first
+        const apiKeyAuth = await validateApiKeyFromHeader(request);
+        if (apiKeyAuth) {
+          userId = apiKeyAuth.userId;
+          logger.info(
+            `Request authenticated via user API key: ${apiKeyAuth.apiKey.name}`,
+          );
+        } else if (legacyApiKey && providedKey === legacyApiKey) {
+          // Fallback to legacy API key (backward compatibility)
+          userId = "dbea8f30-4a6f-4125-87f5-c465b16e2ec9";
+          logger.warn(
+            "Request authenticated via legacy API key (deprecated - migrate to user API keys)",
+          );
+        } else {
+          logger.warn("Invalid API key provided");
+          return new Response("Invalid API key", { status: 401 });
+        }
+      } else {
+        // No authentication provided
         return new Response("Unauthorized", { status: 401 });
       }
-      userId = session.user.id;
     }
 
     const {

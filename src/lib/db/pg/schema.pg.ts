@@ -12,6 +12,7 @@ import {
   unique,
   varchar,
   index,
+  integer,
 } from "drizzle-orm/pg-core";
 import { isNotNull } from "drizzle-orm";
 import { DBWorkflow, DBEdge, DBNode } from "app-types/workflow";
@@ -455,3 +456,31 @@ export const ScheduledTaskExecutionTable = pgTable(
 export type ScheduledTaskEntity = typeof ScheduledTaskTable.$inferSelect;
 export type ScheduledTaskExecutionEntity =
   typeof ScheduledTaskExecutionTable.$inferSelect;
+
+export const ApiKeyTable = pgTable(
+  "api_key",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    keyHash: text("key_hash").notNull().unique(),
+    keyPrefix: text("key_prefix").notNull(),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    lastUsedAt: timestamp("last_used_at"),
+    requestCount: integer("request_count").notNull().default(0),
+    expiresAt: timestamp("expires_at"),
+    rateLimit: integer("rate_limit"),
+    isActive: boolean("is_active").notNull().default(true),
+  },
+  (table) => [
+    index("api_key_user_id_idx").on(table.userId),
+    index("api_key_key_hash_idx").on(table.keyHash),
+    index("api_key_is_active_idx").on(table.isActive),
+  ],
+);
+
+export type ApiKeyEntity = typeof ApiKeyTable.$inferSelect;
