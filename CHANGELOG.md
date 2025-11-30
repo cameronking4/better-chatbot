@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.0 (2025-11-30)
+
+
+### Features
+
+* add browse and review chats by agent feature (closes [#8](https://github.com/cameronking4/better-chatbot/issues/8)) ([84c5099](https://github.com/cameronking4/better-chatbot/commit/84c5099dcccba79b9545efcca969310b9b8019f2))
+
 ## [1.26.0](https://github.com/cgoinglove/better-chatbot/compare/v1.25.0...v1.26.0) (2025-11-07)
 
 
