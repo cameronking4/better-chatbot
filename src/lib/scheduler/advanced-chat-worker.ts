@@ -2,7 +2,6 @@ import { Worker, Job } from "bullmq";
 import { redisConnection } from "./queue";
 import { advancedChatRepository } from "@/lib/db/repository";
 import { chatRepository } from "@/lib/db/repository";
-import { agentRepository } from "@/lib/db/repository";
 import { publishStreamEvent } from "./advanced-chat-stream";
 import logger from "logger";
 import type { AdvancedChatJobData } from "./advanced-chat-queue";
@@ -34,6 +33,7 @@ import { generateUUID } from "@/lib/utils";
 import { buildCsvIngestionPreviewParts } from "@/lib/ai/ingest/csv-ingest";
 import { serverFileStorage } from "@/lib/file-storage";
 import { convertToSavePart } from "@/app/api/chat/shared.chat";
+import type { ChatMetadata } from "@/types/chat";
 
 const MAX_ITERATIONS = 100; // Maximum number of iterations per job
 const MAX_STEPS_PER_ITERATION = 100; // Maximum tool call steps per iteration
@@ -142,7 +142,7 @@ async function processAdvancedChatJob(
         threadId,
         ...message,
         parts: message.parts.map(convertToSavePart),
-        metadata: message.metadata,
+        metadata: message.metadata as ChatMetadata | undefined,
       });
       messages.push(message);
     }
@@ -288,7 +288,6 @@ async function processAdvancedChatJob(
     // Process iterations
     let currentIteration = jobRecord.currentIteration;
     let shouldContinue = true;
-    let _lastResponseMessage: UIMessage | null = null;
 
     while (shouldContinue && currentIteration < MAX_ITERATIONS) {
       currentIteration++;
@@ -400,7 +399,7 @@ async function processAdvancedChatJob(
             if (part.type === "text-delta") {
               // Also collect from text-delta as backup
               if (!collectedText) {
-                collectedText += part.textDelta;
+                collectedText += part.text;
               }
             } else if (part.type === "tool-call") {
               // Store toolName for later use in tool-result
@@ -409,7 +408,7 @@ async function processAdvancedChatJob(
               toolCalls.push({
                 toolCallId: part.toolCallId,
                 toolName: part.toolName,
-                args: part.args,
+                args: part.input,
               });
               // Add tool call part to message with proper structure
               // The UI expects tool parts to use format: type: "tool-${toolName}"
@@ -419,7 +418,7 @@ async function processAdvancedChatJob(
               const toolPart = {
                 type: `tool-${part.toolName}`,
                 toolCallId: part.toolCallId,
-                input: part.args || {},
+                input: part.input || {},
                 state: "input-available", // Will be updated to "output-available" when tool-result arrives
               } as any;
 
@@ -431,7 +430,7 @@ async function processAdvancedChatJob(
                 messageId: responseMessage.id,
                 toolCallId: part.toolCallId,
                 toolName: part.toolName,
-                args: part.args,
+                args: part.input,
                 iteration: currentIteration,
               });
 
@@ -461,7 +460,7 @@ async function processAdvancedChatJob(
                 // Update the tool-call part with result - use proper structure
                 const toolPart = responseMessage.parts[toolCallIndex] as any;
                 toolPart.state = "output-available";
-                toolPart.output = part.result;
+                toolPart.output = part.output;
 
                 // Ensure input is preserved (should already be there from tool-call)
                 if (!toolPart.input) {
@@ -477,7 +476,7 @@ async function processAdvancedChatJob(
                   messageId: responseMessage.id,
                   toolCallId: part.toolCallId,
                   toolName,
-                  result: part.result,
+                  result: part.output,
                   iteration: currentIteration,
                 });
 
@@ -504,7 +503,7 @@ async function processAdvancedChatJob(
                   type: `tool-${toolName}`,
                   toolCallId: part.toolCallId,
                   input: {}, // Empty input since we didn't see the call
-                  output: part.result,
+                  output: part.output,
                   state: "output-available",
                 } as any;
 
@@ -525,14 +524,8 @@ async function processAdvancedChatJob(
               }
             } else if (part.type === "finish") {
               // The finish event contains usage information
-              // part.usage should have promptTokens/completionTokens/totalTokens
-              // part.totalUsage might be a different format or just totalTokens
-              // Prefer part.usage if it has the breakdown, otherwise use part.totalUsage
-              if (part.usage) {
-                finalUsage = part.usage;
-              } else if (part.totalUsage) {
-                // If only totalUsage is available, we'll try to get usage from result.usage later
-                // But store totalUsage as fallback
+              // Use totalUsage from the finish part
+              if (part.totalUsage) {
                 finalUsage = part.totalUsage;
               }
             }
@@ -570,9 +563,10 @@ async function processAdvancedChatJob(
           if (resultUsage) {
             // Prefer result.usage as it should have the full breakdown
             // Only use finalUsage from stream if result.usage doesn't have breakdown
+            const resultUsageAny = resultUsage as any;
             if (
-              resultUsage.promptTokens !== undefined &&
-              resultUsage.completionTokens !== undefined
+              resultUsageAny.promptTokens !== undefined &&
+              resultUsageAny.completionTokens !== undefined
             ) {
               finalUsage = resultUsage;
             } else if (!finalUsage) {
@@ -650,7 +644,6 @@ async function processAdvancedChatJob(
 
         // Add response to messages
         messages.push(responseMessage);
-        _lastResponseMessage = responseMessage;
 
         // Log tool parts before saving
         const toolParts = responseMessage.parts.filter((p: any) =>
@@ -680,19 +673,20 @@ async function processAdvancedChatJob(
         const partsToSave = responseMessage.parts.map((part: any) => {
           // Ensure tool parts have input/output preserved
           if (part.type?.startsWith("tool-")) {
-            const converted = convertToSavePart(part);
+            const converted = convertToSavePart(part) as any;
+            const partAny = part as any;
             // Double-check that input/output are preserved
-            if (!converted.input && part.input) {
+            if (!converted.input && partAny.input) {
               logger.warn(
                 `Tool part lost input after convertToSavePart: ${part.type}`,
               );
-              return { ...converted, input: part.input };
+              return { ...converted, input: partAny.input };
             }
-            if (!converted.output && part.output) {
+            if (!converted.output && partAny.output) {
               logger.warn(
                 `Tool part lost output after convertToSavePart: ${part.type}`,
               );
-              return { ...converted, output: part.output };
+              return { ...converted, output: partAny.output };
             }
             return converted;
           }

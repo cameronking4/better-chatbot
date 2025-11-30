@@ -1,11 +1,11 @@
 import { advancedChatApiRequestBodySchema } from "@/types/advanced-chat";
+import { ChatMetadata } from "@/types/chat";
 import { advancedChatRepository } from "@/lib/db/repository";
 import { chatRepository } from "@/lib/db/repository";
 import { advancedChatQueue } from "@/lib/scheduler/advanced-chat-queue";
 import { getSession } from "auth/server";
 import { validateApiKeyFromHeader } from "@/lib/auth/api-key-auth";
 import { generateUUID } from "@/lib/utils";
-import logger from "logger";
 import { colorize } from "consola/utils";
 import globalLogger from "logger";
 import { subscribeToJobStream } from "@/lib/scheduler/advanced-chat-stream";
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       id: message.id,
       role: message.role,
       parts: message.parts,
-      metadata: message.metadata,
+      metadata: message.metadata as ChatMetadata | undefined,
     });
 
     // Generate correlation ID

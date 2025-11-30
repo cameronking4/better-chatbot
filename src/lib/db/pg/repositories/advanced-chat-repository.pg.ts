@@ -218,7 +218,13 @@ export const pgAdvancedChatRepository: AdvancedChatRepository = {
     return {
       ...result,
       contextSummaryId: result.contextSummaryId ?? undefined,
-      toolCalls: (result.toolCalls as ToolCallTrace[]) ?? [],
+      messagesSnapshot: result.messagesSnapshot as UIMessage[],
+      toolCalls:
+        result.toolCalls?.map((tc) => ({
+          ...tc,
+          startedAt: new Date(tc.startedAt),
+          completedAt: new Date(tc.completedAt),
+        })) ?? [],
       error: result.error ?? undefined,
       completedAt: result.completedAt ?? undefined,
       duration: result.duration ?? undefined,
@@ -235,7 +241,13 @@ export const pgAdvancedChatRepository: AdvancedChatRepository = {
     return results.map((result) => ({
       ...result,
       contextSummaryId: result.contextSummaryId ?? undefined,
-      toolCalls: (result.toolCalls as ToolCallTrace[]) ?? [],
+      messagesSnapshot: result.messagesSnapshot as UIMessage[],
+      toolCalls:
+        result.toolCalls?.map((tc) => ({
+          ...tc,
+          startedAt: new Date(tc.startedAt),
+          completedAt: new Date(tc.completedAt),
+        })) ?? [],
       error: result.error ?? undefined,
       completedAt: result.completedAt ?? undefined,
       duration: result.duration ?? undefined,
@@ -253,7 +265,13 @@ export const pgAdvancedChatRepository: AdvancedChatRepository = {
     return {
       ...result,
       contextSummaryId: result.contextSummaryId ?? undefined,
-      toolCalls: (result.toolCalls as ToolCallTrace[]) ?? [],
+      messagesSnapshot: result.messagesSnapshot as UIMessage[],
+      toolCalls:
+        result.toolCalls?.map((tc) => ({
+          ...tc,
+          startedAt: new Date(tc.startedAt),
+          completedAt: new Date(tc.completedAt),
+        })) ?? [],
       error: result.error ?? undefined,
       completedAt: result.completedAt ?? undefined,
       duration: result.duration ?? undefined,

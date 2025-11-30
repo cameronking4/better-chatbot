@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ChatModel, ChatMention, ChatMetadata } from "./chat";
+import { ChatModel, ChatMention } from "./chat";
 import { UIMessage } from "ai";
 
 export type AdvancedChatJobStatus =

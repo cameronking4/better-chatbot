@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "ui/button";
 import { Textarea } from "ui/textarea";
 import {
@@ -16,15 +16,9 @@ import { ScrollArea } from "ui/scroll-area";
 import { Separator } from "ui/separator";
 import {
   Play,
-  Pause,
   Square,
   RefreshCw,
-  Activity,
-  Database,
-  Zap,
-  Clock,
   AlertCircle,
-  CheckCircle,
   Loader2,
   Copy,
   ExternalLink,
@@ -47,12 +41,10 @@ import { ToolModeDropdown } from "./tool-mode-dropdown";
 import { Avatar, AvatarFallback, AvatarImage } from "ui/avatar";
 import { WorkflowSummary } from "app-types/workflow";
 import { AgentSummary } from "app-types/agent";
-import { AppDefaultToolkit } from "lib/ai/tools";
 import { AllowedMCPServer } from "app-types/mcp";
 import { appStore } from "@/app/store";
 import { useShallow } from "zustand/shallow";
 import { PreviewMessage } from "./message";
-import { isToolUIPart } from "ai";
 
 interface JobStatus {
   jobId: string;
@@ -67,9 +59,7 @@ export default function AdvancedChatDebugger() {
   const [threadId] = useState(() => generateUUID());
   const [message, setMessage] = useState("");
   const [chatModel, setChatModel] = useState<ChatModel | undefined>();
-  const [toolChoice, setToolChoice] = useState<"auto" | "none" | "manual">(
-    "auto",
-  );
+  const [toolChoice] = useState<"auto" | "none" | "manual">("auto");
   const [mentions, setMentions] = useState<ChatMention[]>([]);
   const [currentJob, setCurrentJob] = useState<JobStatus | null>(null);
 
@@ -171,7 +161,7 @@ export default function AdvancedChatDebugger() {
                 // Find or create text part
                 let textPart = message.parts.find(
                   (p: any) => p.type === "text",
-                );
+                ) as { type: "text"; text: string } | undefined;
                 if (!textPart) {
                   textPart = { type: "text", text: "" };
                   message.parts.push(textPart);
@@ -204,7 +194,7 @@ export default function AdvancedChatDebugger() {
               if (message) {
                 const toolPart = message.parts.find(
                   (p: any) => p.toolCallId === data.toolCallId,
-                );
+                ) as any;
                 if (toolPart) {
                   toolPart.state = "output-available";
                   toolPart.output = data.result;
@@ -566,10 +556,7 @@ export default function AdvancedChatDebugger() {
                 <label className="text-sm font-medium mb-2 block">
                   Tool Mode
                 </label>
-                <ToolModeDropdown
-                  value={toolChoice}
-                  onValueChange={setToolChoice}
-                />
+                <ToolModeDropdown />
               </div>
 
               <div>

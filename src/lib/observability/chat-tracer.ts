@@ -92,14 +92,15 @@ export class ChatTracer {
     duration: number,
     metadata?: Record<string, unknown>,
   ): void {
+    const usageAny = usage as any;
     logger.info(
       `[${this.correlationId}] Iteration ${this.iterationNumber} completed for job ${this.jobId}`,
       {
         correlationId: this.correlationId,
         jobId: this.jobId,
         iterationNumber: this.iterationNumber,
-        inputTokens: usage?.promptTokens ?? 0,
-        outputTokens: usage?.completionTokens ?? 0,
+        inputTokens: usageAny?.promptTokens ?? usageAny?.inputTokens ?? 0,
+        outputTokens: usageAny?.completionTokens ?? usageAny?.outputTokens ?? 0,
         totalTokens: usage?.totalTokens ?? 0,
         duration,
         ...metadata,
@@ -239,8 +240,8 @@ export class ChatTracer {
       output: error ? undefined : output,
       error: error?.message,
       duration,
-      startedAt: startedAt.toISOString(),
-      completedAt: completedAt.toISOString(),
+      startedAt,
+      completedAt,
     };
   }
 

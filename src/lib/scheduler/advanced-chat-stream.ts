@@ -1,6 +1,5 @@
 import IORedis from "ioredis";
 import logger from "logger";
-import { redisConnection } from "./queue";
 
 /**
  * Redis pub/sub client for streaming advanced chat events

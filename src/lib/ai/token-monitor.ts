@@ -73,8 +73,9 @@ export function extractTokenCount(
   }
 
   return {
-    inputTokens: usage.promptTokens ?? 0,
-    outputTokens: usage.completionTokens ?? 0,
+    inputTokens: (usage as any).promptTokens ?? (usage as any).inputTokens ?? 0,
+    outputTokens:
+      (usage as any).completionTokens ?? (usage as any).outputTokens ?? 0,
     totalTokens: usage.totalTokens ?? 0,
   };
 }

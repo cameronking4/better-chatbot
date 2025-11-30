@@ -1,16 +1,11 @@
 import "server-only";
-import { UIMessage, Tool, UIMessageStreamWriter } from "ai";
-import { ChatMention, ChatMetadata } from "app-types/chat";
-import { errorToString } from "lib/utils";
+import { Tool, UIMessageStreamWriter } from "ai";
+import { ChatMention } from "app-types/chat";
 import logger from "logger";
 import { AllowedMCPServer, VercelAIMcpTool } from "app-types/mcp";
-import { ObjectJsonSchema7 } from "app-types/util";
 import { safe } from "ts-safe";
 import { workflowRepository } from "lib/db/repository";
-import {
-  VercelAIWorkflowTool,
-  VercelAIWorkflowToolTag,
-} from "app-types/workflow";
+import { VercelAIWorkflowTool } from "app-types/workflow";
 import { workflowToVercelAITools } from "../shared.chat";
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import { APP_DEFAULT_TOOL_KIT } from "lib/ai/tools/tool-kit";
@@ -179,7 +174,7 @@ export function buildSystemPromptForAdvanced(
     : true;
 
   return mergeSystemPrompt(
-    buildUserSystemPrompt(user, userPreferences, agent),
+    buildUserSystemPrompt(user, userPreferences, agent ?? undefined),
     mcpServerCustomizations && Object.keys(mcpServerCustomizations).length > 0
       ? buildMcpServerCustomizationsSystemPrompt(mcpServerCustomizations)
       : undefined,

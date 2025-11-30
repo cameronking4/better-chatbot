@@ -2,7 +2,6 @@ import { advancedChatRepository } from "@/lib/db/repository";
 import { advancedChatQueue } from "@/lib/scheduler/advanced-chat-queue";
 import { getSession } from "auth/server";
 import { validateApiKeyFromHeader } from "@/lib/auth/api-key-auth";
-import logger from "logger";
 import { colorize } from "consola/utils";
 import globalLogger from "logger";
 

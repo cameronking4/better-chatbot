@@ -35,8 +35,6 @@ const queueOptions: QueueOptions = {
       count: 100, // Keep last 100 failed jobs for debugging
       age: 7 * 24 * 3600, // Keep for 7 days
     },
-    // Long TTL for jobs that may run for hours/days
-    jobId: undefined, // Will be set when adding job
   },
 };
 
@@ -51,20 +49,7 @@ advancedChatQueue.on("error", (err) => {
   logger.error("Advanced chat queue error:", err);
 });
 
-advancedChatQueue.on("waiting", (job) => {
-  logger.debug(`Advanced chat job ${job?.id} is waiting`);
-});
-
-advancedChatQueue.on("active", (job) => {
-  logger.info(`Advanced chat job ${job?.id} is now active`);
-});
-
-advancedChatQueue.on("completed", (job) => {
-  logger.info(`Advanced chat job ${job?.id} completed successfully`);
-});
-
-advancedChatQueue.on("failed", (job, err) => {
-  logger.error(`Advanced chat job ${job?.id} failed:`, err);
-});
+// Note: These events are not available on Queue, only on Worker
+// See advanced-chat-worker.ts for worker event handlers
 
 logger.info("Advanced chat queue initialized");

@@ -4,14 +4,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { agentRepository } from "lib/db/repository";
 import { validateApiKeyFromHeader } from "lib/auth/api-key-auth";
-import { ChatMention } from "app-types/chat";
 import { mcpClientsManager } from "lib/ai/mcp/mcp-manager";
 import { loadMcpTools } from "@/app/api/chat/shared.chat";
 import { loadAppDefaultTools } from "@/app/api/chat/shared.chat";
-import { loadWorkFlowTools } from "@/app/api/chat/shared.chat";
 import { workflowRepository } from "lib/db/repository";
-import { DefaultToolName, APP_DEFAULT_TOOL_KIT } from "lib/ai/tools";
-import { objectFlow } from "lib/utils";
 import { z } from "zod";
 import logger from "logger";
 import { colorize } from "consola/utils";
@@ -305,7 +301,7 @@ export async function POST(
         {
           title: tool.description || toolName,
           description: tool.description || `Forwarded MCP tool: ${toolName}`,
-          inputSchema: tool.inputSchema || z.object({}),
+          inputSchema: (tool.inputSchema as z.ZodTypeAny) || z.object({}),
           outputSchema: z.any(),
         },
         async (args) => {
@@ -345,7 +341,7 @@ export async function POST(
           title: tool.description || toolName,
           description:
             tool.description || `Forwarded default tool: ${toolName}`,
-          inputSchema: tool.inputSchema || z.object({}),
+          inputSchema: (tool.inputSchema as z.ZodTypeAny) || z.object({}),
           outputSchema: z.any(),
         },
         async (args) => {
@@ -392,7 +388,7 @@ export async function POST(
               title: workflow.description || workflow.name,
               description:
                 workflow.description || `Forwarded workflow: ${workflow.name}`,
-              inputSchema: workflow.schema || z.object({}),
+              inputSchema: z.object({}),
               outputSchema: z.any(),
             },
             async (args) => {

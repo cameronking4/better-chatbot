@@ -6,7 +6,6 @@ import logger from "logger";
 import {
   calculateCumulativeTokens,
   estimateTotalTokens,
-  getContextWindowLimit,
   shouldSummarize,
 } from "./token-monitor";
 import type { AdvancedChatIteration } from "@/types/advanced-chat";
@@ -133,11 +132,10 @@ Summary:`;
     const summaryResponse = await generateText({
       model: summaryModel,
       prompt: summaryPrompt,
-      maxTokens: 1000, // Limit summary length
     });
 
     const summaryText = summaryResponse.text;
-    const summaryTokenCount = summaryResponse.usage.totalTokens;
+    const summaryTokenCount = summaryResponse.usage?.totalTokens ?? 0;
 
     // Create summary message
     const summaryMessage: UIMessage = {
