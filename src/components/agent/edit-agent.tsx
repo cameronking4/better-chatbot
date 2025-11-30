@@ -18,7 +18,13 @@ import { BACKGROUND_COLORS } from "lib/const";
 import { cn, fetcher, objectFlow } from "lib/utils";
 import { safe } from "ts-safe";
 import { handleErrorWithToast } from "ui/shared-toast";
-import { ChevronDownIcon, Code2, Loader, WandSparklesIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  Code2,
+  Loader,
+  WandSparklesIcon,
+  Share2,
+} from "lucide-react";
 import { Button } from "ui/button";
 import {
   DropdownMenu,
@@ -36,6 +42,7 @@ import { ShareableActions, Visibility } from "@/components/shareable-actions";
 import { GenerateAgentDialog } from "./generate-agent-dialog";
 import { AgentIconPicker } from "./agent-icon-picker";
 import { AgentToolSelector } from "./agent-tool-selector";
+import { McpExportDialog } from "./mcp-export-dialog";
 import {
   RandomDataGeneratorExample,
   WeatherExample,
@@ -86,6 +93,7 @@ export default function EditAgent({
 
   const [openGenerateAgentDialog, setOpenGenerateAgentDialog] = useState(false);
   const [openCodeExportDialog, setOpenCodeExportDialog] = useState(false);
+  const [openMcpExportDialog, setOpenMcpExportDialog] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isVisibilityChangeLoading, setIsVisibilityChangeLoading] =
     useState(false);
@@ -386,6 +394,15 @@ export default function EditAgent({
                 >
                   <Code2 className="size-4" />
                 </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setOpenMcpExportDialog(true)}
+                  disabled={isLoading}
+                  title="Export as MCP Server"
+                >
+                  <Share2 className="size-4" />
+                </Button>
                 <ShareableActions
                   type="agent"
                   visibility={agent.visibility || "private"}
@@ -574,6 +591,22 @@ export default function EditAgent({
         onToolsGenerated={assignToolsByNames}
       />
 
+      {/* MCP Export Dialog */}
+      {initialAgent && (
+        <McpExportDialog
+          agent={{
+            ...initialAgent,
+            ...agent,
+            id: initialAgent.id,
+            userId: initialAgent.userId,
+            createdAt: initialAgent.createdAt,
+            updatedAt: initialAgent.updatedAt,
+          }}
+          open={openMcpExportDialog}
+          onOpenChange={setOpenMcpExportDialog}
+        />
+      )}
+
       {/* Code Export Dialog */}
       {openCodeExportDialog && initialAgent && (
         <div
@@ -596,15 +629,26 @@ export default function EditAgent({
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">
-                Use this cURL command to call your agent via the API. Make sure to set CHAT_API_KEY in your .env file.
+                Use this cURL command to call your agent via the API. Make sure
+                to set CHAT_API_KEY in your .env file.
               </p>
               <div className="relative">
                 <pre className="p-4 bg-secondary rounded-md overflow-x-auto text-xs">
-                  <code>{(() => {
-                    const chatId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '550e8400-e29b-41d4-a716-446655440000';
-                    const messageId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '550e8400-e29b-41d4-a716-446655440001';
-                    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
-                    return `curl -X POST ${baseUrl}/api/chat \\
+                  <code>
+                    {(() => {
+                      const chatId =
+                        typeof crypto !== "undefined" && crypto.randomUUID
+                          ? crypto.randomUUID()
+                          : "550e8400-e29b-41d4-a716-446655440000";
+                      const messageId =
+                        typeof crypto !== "undefined" && crypto.randomUUID
+                          ? crypto.randomUUID()
+                          : "550e8400-e29b-41d4-a716-446655440001";
+                      const baseUrl =
+                        typeof window !== "undefined"
+                          ? window.location.origin
+                          : "http://localhost:3000";
+                      return `curl -X POST ${baseUrl}/api/chat \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -d '{
@@ -623,16 +667,26 @@ export default function EditAgent({
     }],
     "attachments": []
   }'`;
-                  })()}</code>
+                    })()}
+                  </code>
                 </pre>
                 <Button
                   variant="outline"
                   size="sm"
                   className="absolute top-2 right-2"
                   onClick={() => {
-                    const chatId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '550e8400-e29b-41d4-a716-446655440000';
-                    const messageId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '550e8400-e29b-41d4-a716-446655440001';
-                    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+                    const chatId =
+                      typeof crypto !== "undefined" && crypto.randomUUID
+                        ? crypto.randomUUID()
+                        : "550e8400-e29b-41d4-a716-446655440000";
+                    const messageId =
+                      typeof crypto !== "undefined" && crypto.randomUUID
+                        ? crypto.randomUUID()
+                        : "550e8400-e29b-41d4-a716-446655440001";
+                    const baseUrl =
+                      typeof window !== "undefined"
+                        ? window.location.origin
+                        : "http://localhost:3000";
                     const code = `curl -X POST ${baseUrl}/api/chat \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer ${process.env.NEXT_PUBLIC_API_KEY}" \\
