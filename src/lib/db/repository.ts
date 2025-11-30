@@ -11,6 +11,7 @@ import { pgBookmarkRepository } from "./pg/repositories/bookmark-repository.pg";
 import { pgChatExportRepository } from "./pg/repositories/chat-export-repository.pg";
 import { pgScheduledTaskRepository } from "./pg/repositories/scheduled-task-repository.pg";
 import { pgApiKeyRepository } from "./pg/repositories/api-key-repository.pg";
+import { pgAdvancedChatRepository } from "./pg/repositories/advanced-chat-repository.pg";
 
 export const chatRepository = pgChatRepository;
 export const userRepository = pgUserRepository;
@@ -28,3 +29,4 @@ export const bookmarkRepository = pgBookmarkRepository;
 export const chatExportRepository = pgChatExportRepository;
 export const scheduledTaskRepository = pgScheduledTaskRepository;
 export const apiKeyRepository = pgApiKeyRepository;
+export const advancedChatRepository = pgAdvancedChatRepository;

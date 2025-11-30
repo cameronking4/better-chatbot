@@ -484,3 +484,125 @@ export const ApiKeyTable = pgTable(
 );
 
 export type ApiKeyEntity = typeof ApiKeyTable.$inferSelect;
+
+// Advanced Chat tables for long-running conversations
+export const AdvancedChatJobTable = pgTable(
+  "advanced_chat_job",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => ChatThreadTable.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => UserTable.id, { onDelete: "cascade" }),
+    status: varchar("status", {
+      enum: ["pending", "running", "paused", "completed", "failed"],
+    })
+      .notNull()
+      .default("pending"),
+    currentIteration: integer("current_iteration").notNull().default(0),
+    correlationId: text("correlation_id").notNull(),
+    metadata: json("metadata").$type<{
+      chatModel?: { provider: string; model: string };
+      toolChoice?: "auto" | "none" | "manual";
+      mentions?: any[];
+      allowedMcpServers?: Record<string, any>;
+      allowedAppDefaultToolkit?: string[];
+      imageTool?: { model?: string };
+      agentId?: string;
+    }>(),
+    startedAt: timestamp("started_at"),
+    completedAt: timestamp("completed_at"),
+    error: text("error"),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("advanced_chat_job_thread_id_idx").on(table.threadId),
+    index("advanced_chat_job_user_id_idx").on(table.userId),
+    index("advanced_chat_job_status_idx").on(table.status),
+    index("advanced_chat_job_correlation_id_idx").on(table.correlationId),
+  ],
+);
+
+export const AdvancedChatIterationTable = pgTable(
+  "advanced_chat_iteration",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => AdvancedChatJobTable.id, { onDelete: "cascade" }),
+    iterationNumber: integer("iteration_number").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    contextSummaryId: uuid("context_summary_id").references(
+      () => AdvancedChatContextSummaryTable.id,
+      { onDelete: "set null" },
+    ),
+    messagesSnapshot: json("messages_snapshot").notNull().array().$type<
+      Array<{
+        id: string;
+        role: string;
+        parts: any[];
+        metadata?: any;
+      }>
+    >(),
+    toolCalls: json("tool_calls").array().$type<
+      Array<{
+        toolCallId: string;
+        toolName: string;
+        input: unknown;
+        output?: unknown;
+        error?: string;
+        duration: number;
+        tokensUsed?: number;
+        startedAt: string;
+        completedAt: string;
+      }>
+    >(),
+    error: text("error"),
+    startedAt: timestamp("started_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    completedAt: timestamp("completed_at"),
+    duration: integer("duration"), // Duration in milliseconds
+  },
+  (table) => [
+    index("advanced_chat_iteration_job_id_idx").on(table.jobId),
+    index("advanced_chat_iteration_iteration_number_idx").on(
+      table.iterationNumber,
+    ),
+  ],
+);
+
+export const AdvancedChatContextSummaryTable = pgTable(
+  "advanced_chat_context_summary",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => AdvancedChatJobTable.id, { onDelete: "cascade" }),
+    summaryText: text("summary_text").notNull(),
+    messagesSummarized: integer("messages_summarized").notNull(),
+    tokenCountBefore: integer("token_count_before").notNull(),
+    tokenCountAfter: integer("token_count_after").notNull(),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("advanced_chat_context_summary_job_id_idx").on(table.jobId),
+  ],
+);
+
+export type AdvancedChatJobEntity = typeof AdvancedChatJobTable.$inferSelect;
+export type AdvancedChatIterationEntity =
+  typeof AdvancedChatIterationTable.$inferSelect;
+export type AdvancedChatContextSummaryEntity =
+  typeof AdvancedChatContextSummaryTable.$inferSelect;

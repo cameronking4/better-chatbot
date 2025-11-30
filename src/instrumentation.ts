@@ -27,6 +27,13 @@ export async function register() {
       createScheduledTaskWorker();
       await syncScheduledTasksToQueue();
       console.log("Scheduled task worker initialized");
+
+      // Initialize advanced chat worker
+      const { createAdvancedChatWorker } = await import(
+        "./lib/scheduler/advanced-chat-worker"
+      );
+      createAdvancedChatWorker();
+      console.log("Advanced chat worker initialized");
     }
   }
 }
