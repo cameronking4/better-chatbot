@@ -2,6 +2,23 @@
 
 This directory contains scripts for deploying and managing the Better Chatbot application on Azure Kubernetes Service (AKS).
 
+## 🤖 Automated CI/CD (NEW!)
+
+**Want automated deployments via GitHub Actions?** Check out our complete CI/CD solution:
+
+- **[Quick Start (TL;DR)](CICD-TLDR.md)** - Get CI/CD running in 30 minutes
+- **[Implementation Guide](CICD-IMPLEMENTATION-GUIDE.md)** - Step-by-step setup instructions
+- **[Design Specification](CICD-DESIGN-SPEC.md)** - Architecture and design decisions
+- **[Research & Best Practices](CICD-RESEARCH.md)** - Technical research and industry practices
+
+**Features:**
+- ✅ Automatic deployment on push to main
+- ✅ Manual trigger support
+- ✅ Zero-downtime rolling updates
+- ✅ Automatic rollback on failures
+- ✅ Comprehensive health checks
+- ✅ Secure secret management
+
 ## 📋 Prerequisites
 
 - **Azure CLI**: [Install Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
